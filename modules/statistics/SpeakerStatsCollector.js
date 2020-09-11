@@ -29,6 +29,10 @@ export default class SpeakerStatsCollector {
 
                 // usersIdMatch: match userID and actual ID
             },
+            usersTime: {
+
+                // [startTime, leaveTime] for each user
+            },
             dominantSpeakerId: null
         };
 
@@ -98,6 +102,7 @@ export default class SpeakerStatsCollector {
 
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
+            this.stats.usersTime[userId] = new Array(new Date());
             //this.stats.usersActualId[participant.getIdentityID()] = this.stats.users[userId];
             //this.stats.usersIdMatch[participant.getIdentityID()] = new Array(userId);
         }
@@ -116,6 +121,7 @@ export default class SpeakerStatsCollector {
 
         if (savedUser) {
             savedUser.markAsHasLeft();
+            this.stats.usersTime[userId].push(new Date());
         }
     }
 
@@ -144,6 +150,16 @@ export default class SpeakerStatsCollector {
      */
     getStats() {
         return this.stats.users;
+    }
+
+    /**
+     * Return a copy of the join/leave time.
+     *
+     * @returns {Object}  [startTime, leaveTime] for each user
+     * @private
+     */
+    getUserTime() {
+        return this.stats.usersTime;
     }
 
     /**
