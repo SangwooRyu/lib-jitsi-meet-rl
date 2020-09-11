@@ -91,6 +91,7 @@ export default class SpeakerStatsCollector {
         if(this.stats.usersActualId[participant.getIdentityID()]){
             this.stats.users[userId] = this.stats.users[this.stats.usersIdMatch[participant.getIdentityID()][0]];
             this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
+            this.stats.users[userId].eraseLeaveTime();
             
             return;
         }

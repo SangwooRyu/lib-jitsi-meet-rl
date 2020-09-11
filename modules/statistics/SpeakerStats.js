@@ -148,6 +148,15 @@ class SpeakerStats {
     getLeaveTime() {
         return this.leaveTime;
     }
+
+    /**
+     * Erase Leave Time
+     *
+     * @returns {Object} leaveTime Date object
+     */
+    eraseLeaveTime() {
+        this.leaveTime = null;
+    }
 }
 
 module.exports = SpeakerStats;
