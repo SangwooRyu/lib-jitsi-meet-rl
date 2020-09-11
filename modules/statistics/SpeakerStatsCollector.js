@@ -98,7 +98,7 @@ export default class SpeakerStatsCollector {
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
             this.stats.usersActualId[participant.getIdentityID()] = this.stats.users[userId];
-            this.stats.usersIdMatch[participant.getIdentityID()] = [ userId ];
+            this.stats.usersIdMatch[participant.getIdentityID()] = new Array(userId);
         }
     }
 
