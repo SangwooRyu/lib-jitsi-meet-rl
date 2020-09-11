@@ -88,7 +88,7 @@ export default class SpeakerStatsCollector {
             return;
         }
 
-        if(this.stats.usersActualID[participant.getIdentityID()]){
+        if(this.stats.usersActualId[participant.getIdentityID()]){
             this.stats.users[userId] = this.stats.usersIdMatch[participant.getIdentityID()][0];
             this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
             
@@ -97,7 +97,7 @@ export default class SpeakerStatsCollector {
 
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
-            this.stats.usersActualID[participant.getIdentityID()] = this.stats.users[userId];
+            this.stats.usersActualId[participant.getIdentityID()] = this.stats.users[userId];
             this.stats.usersIdMatch[participant.getIdentityID()] = [ userId ];
         }
     }
