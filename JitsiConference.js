@@ -3287,14 +3287,6 @@ JitsiConference.prototype.getSpeakerStats = function() {
 };
 
 /**
- * Get a summary of the time current participants join/leave
- * @returns {object}
- */
-JitsiConference.prototype.getUserTime = function() {
-    return this.speakerStatsCollector.getUserTime();
-};
-
-/**
  * Sets the maximum video size the local participant should receive from remote
  * participants.
  *

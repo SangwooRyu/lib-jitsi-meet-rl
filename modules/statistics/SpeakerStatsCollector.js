@@ -29,10 +29,6 @@ export default class SpeakerStatsCollector {
 
                 // usersIdMatch: match userID and actual ID
             },
-            usersTime: {
-
-                // [startTime, leaveTime] for each user
-            },
             dominantSpeakerId: null
         };
 
@@ -102,7 +98,6 @@ export default class SpeakerStatsCollector {
 
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
-            this.stats.usersTime[userId] = new Array(new Date());
             //this.stats.usersActualId[participant.getIdentityID()] = this.stats.users[userId];
             //this.stats.usersIdMatch[participant.getIdentityID()] = new Array(userId);
         }
@@ -121,7 +116,6 @@ export default class SpeakerStatsCollector {
 
         if (savedUser) {
             savedUser.markAsHasLeft();
-            this.stats.usersTime[userId].push(new Date());
         }
     }
 
@@ -153,16 +147,6 @@ export default class SpeakerStatsCollector {
     }
 
     /**
-     * Return a copy of the join/leave time.
-     *
-     * @returns {Object}  [startTime, leaveTime] for each user
-     * @private
-     */
-    getUserTime() {
-        return this.stats.usersTime;
-    }
-
-    /**
      * Updates of the current stats is requested, passing the new values.
      *
      * @param {Object} newStats - The new values used to update current one.
@@ -185,6 +169,8 @@ export default class SpeakerStatsCollector {
                 } else {
                     speakerStatsToUpdate = new SpeakerStats(
                         userId, newStats[userId].displayName);
+                    speakerStatsToUpdate.startTime = newStats[userId].startTime;
+                    speakerStatsToUpdate.leaveTime = newStats[userId].leaveTime;
                     this.stats.users[userId] = speakerStatsToUpdate;
                     speakerStatsToUpdate.markAsHasLeft();
                 }
