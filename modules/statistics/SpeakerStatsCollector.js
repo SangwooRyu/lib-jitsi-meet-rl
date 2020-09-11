@@ -25,13 +25,16 @@ export default class SpeakerStatsCollector {
 
                 // userActualId: SpeakerStats
             },
+            usersIdMatch: {
+
+                // usersIdMatch: match userID and actual ID
+            },
             dominantSpeakerId: null
         };
 
         const userId = conference.myUserId();
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
-
         this.conference = conference;
 
         conference.addEventListener(
@@ -87,8 +90,17 @@ export default class SpeakerStatsCollector {
 
         console.log(`Get Identity of ${participant.getIdentityID()}`);
 
+        if(this.stats.userActualID[participant.getIdentityID()]){
+            this.stats.users[userId] = this.stats.usersIdMatch[participant.getIdentityID()][0];
+            this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
+            
+            return;
+        }
+
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
+            this.stats.userActualID[participant.getIdentityID()] = this.stats.users[userId];
+            this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
         }
     }
 
