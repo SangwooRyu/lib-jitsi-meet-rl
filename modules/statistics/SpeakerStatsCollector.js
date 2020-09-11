@@ -177,8 +177,8 @@ export default class SpeakerStatsCollector {
 
             speakerStatsToUpdate.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
-            speakerStatsToUpdate.startTime = newStats[userId].startTime;
-            speakerStatsToUpdate.leaveTime = newStats[userId].leaveTime;
+            speakerStatsToUpdate.setStartTime(newStats[userId].getStartTime());
+            speakerStatsToUpdate.setLeaveTime(newStats[userId].getLeaveTime());
         }
     }
 }

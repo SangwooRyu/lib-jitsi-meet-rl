@@ -144,6 +144,10 @@ class SpeakerStats {
         return this.startTime;
     }
 
+    setStartTime(st){
+        this.startTime = st;
+    }
+
     /**
      * Return Leave Time
      *
@@ -151,6 +155,10 @@ class SpeakerStats {
      */
     getLeaveTime() {
         return this.leaveTime;
+    }
+
+    setLeaveTime(lt){
+        this.leaveTime = lt;
     }
 
     /**
