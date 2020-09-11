@@ -169,8 +169,6 @@ export default class SpeakerStatsCollector {
                 } else {
                     speakerStatsToUpdate = new SpeakerStats(
                         userId, newStats[userId].displayName);
-                    speakerStatsToUpdate.startTime = newStats[userId].startTime;
-                    speakerStatsToUpdate.leaveTime = newStats[userId].leaveTime;
                     this.stats.users[userId] = speakerStatsToUpdate;
                     speakerStatsToUpdate.markAsHasLeft();
                 }
@@ -178,6 +176,8 @@ export default class SpeakerStatsCollector {
 
             speakerStatsToUpdate.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
+            //speakerStatsToUpdate.startTime = newStats[userId].startTime;
+            //speakerStatsToUpdate.leaveTime = newStats[userId].leaveTime;
         }
     }
 }
