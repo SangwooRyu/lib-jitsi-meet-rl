@@ -88,7 +88,7 @@ export default class SpeakerStatsCollector {
             return;
         }
 
-        console.log(`Get Identity of ${participant.getIdentityID()}`);
+        console.log(`Identity: ${this.stats.userActualID[participant.getIdentityID()]}`)
 
         if(this.stats.userActualID[participant.getIdentityID()]){
             this.stats.users[userId] = this.stats.usersIdMatch[participant.getIdentityID()][0];
@@ -100,7 +100,7 @@ export default class SpeakerStatsCollector {
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
             this.stats.userActualID[participant.getIdentityID()] = this.stats.users[userId];
-            this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
+            this.stats.usersIdMatch[participant.getIdentityID()] = [ userId ];
         }
     }
 
