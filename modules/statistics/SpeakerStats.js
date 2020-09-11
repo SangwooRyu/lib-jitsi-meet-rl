@@ -119,6 +119,10 @@ class SpeakerStats {
         return this._hasLeft;
     }
 
+    setHasLeft(tf) {
+        this._hasLeft = tf;
+    }
+
     /**
      * Set the user as having left the meeting.
      *
