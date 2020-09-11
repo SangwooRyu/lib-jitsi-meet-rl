@@ -88,9 +88,9 @@ export default class SpeakerStatsCollector {
             return;
         }
 
-        console.log(`Identity: ${this.stats.userActualID[participant.getIdentityID()]}`)
+        console.log(`Identity: ${this.stats.usersActualID[participant.getIdentityID()]}`)
 
-        if(this.stats.userActualID[participant.getIdentityID()]){
+        if(this.stats.usersActualID[participant.getIdentityID()]){
             this.stats.users[userId] = this.stats.usersIdMatch[participant.getIdentityID()][0];
             this.stats.usersIdMatch[participant.getIdentityID()].push(userId);
             
@@ -99,7 +99,7 @@ export default class SpeakerStatsCollector {
 
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
-            this.stats.userActualID[participant.getIdentityID()] = this.stats.users[userId];
+            this.stats.usersActualID[participant.getIdentityID()] = this.stats.users[userId];
             this.stats.usersIdMatch[participant.getIdentityID()] = [ userId ];
         }
     }
