@@ -21,12 +21,17 @@ export default class SpeakerStatsCollector {
 
                 // userId: SpeakerStats
             },
+            usersActualId: {
+
+                // userActualId: SpeakerStats
+            },
             dominantSpeakerId: null
         };
 
         const userId = conference.myUserId();
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
+
         this.conference = conference;
 
         conference.addEventListener(
@@ -79,6 +84,8 @@ export default class SpeakerStatsCollector {
         if (participant.isHidden()) {
             return;
         }
+
+        console.log(`Get Identity of ${participant.getIdentityID()}`);
 
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
