@@ -24,9 +24,6 @@ class SpeakerStats {
         this.totalDominantSpeakerTime = 0;
         this._dominantSpeakerStart = 0;
         this._hasLeft = false;
-
-        this.startTime = new Date();
-        this.leaveTime = null;
     }
 
     /**
@@ -119,10 +116,6 @@ class SpeakerStats {
         return this._hasLeft;
     }
 
-    setHasLeft(tf) {
-        this._hasLeft = tf;
-    }
-
     /**
      * Set the user as having left the meeting.
      *
@@ -131,43 +124,6 @@ class SpeakerStats {
     markAsHasLeft() {
         this._hasLeft = true;
         this.setDominantSpeaker(false);
-
-        this.leaveTime = new Date();
-    }
-
-    /**
-     * Return Start Time
-     *
-     * @returns {Object} startTime Date object
-     */
-    getStartTime() {
-        return this.startTime;
-    }
-
-    setStartTime(st){
-        this.startTime = st;
-    }
-
-    /**
-     * Return Leave Time
-     *
-     * @returns {Object} leaveTime Date object
-     */
-    getLeaveTime() {
-        return this.leaveTime;
-    }
-
-    setLeaveTime(lt){
-        this.leaveTime = lt;
-    }
-
-    /**
-     * Erase Leave Time
-     *
-     * @returns {Object} leaveTime Date object
-     */
-    eraseLeaveTime() {
-        this.leaveTime = null;
     }
 }
 
