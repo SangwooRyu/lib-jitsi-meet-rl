@@ -84,7 +84,7 @@ export const CONFERENCE_CREATED_TIMESTAMP = 'conference.createdTimestamp';
 /**
  * UTC conference timestamp when first participant joined.
  */
-export const PARTICIPANT_LOG_CHANGED = 'conference.participantLog';
+//export const PARTICIPANT_LOG_CHANGED = 'conference.participantLog';
 
 /**
  * Indicates that DTMF support changed.

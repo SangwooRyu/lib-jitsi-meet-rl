@@ -655,10 +655,10 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function() {
             conference.eventEmitter.emit(JitsiConferenceEvents.CONFERENCE_CREATED_TIMESTAMP, createdTimestamp);
         });
 
-    this._addConferenceXMPPListener(XMPPEvents.PARTICIPANT_LOG_RECEIVED,
+    /*this._addConferenceXMPPListener(XMPPEvents.PARTICIPANT_LOG_RECEIVED,
         log => {
             conference.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_LOG_CHANGED, log);
-        });
+        });*/
 };
 
 /**
