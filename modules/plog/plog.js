@@ -42,6 +42,6 @@ export default class ParticipantLog {
      * @param payload - Poll to notify
      */
     _onModuleMessageReceived(message) {
-        logger.log(`Received Module Message ${message}`);
+        logger.log(`Received Module Message ${message.toString()}`);
     }
 }
