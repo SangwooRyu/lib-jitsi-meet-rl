@@ -254,10 +254,16 @@ export default class XMPP extends Listenable {
                                 })
                                 .catch(e => logger.warn('Error getting features from lobby.', e && e.message));
                         }
+
+                        if (identity.type === 'participant_log') {
+                            this.plogComponentAddress = identity.name;
+                            logger.info('Found Participant Log Component');
+                        }
                     });
 
                     if (this.speakerStatsComponentAddress
-                        || this.conferenceDurationComponentAddress) {
+                        || this.conferenceDurationComponentAddress
+                        || this.plogComponentAddress) {
                         this.connection.addHandler(
                             this._onPrivateMessage.bind(this), null,
                             'message', null, null);
@@ -759,7 +765,8 @@ export default class XMPP extends Listenable {
         const from = msg.getAttribute('from');
 
         if (!(from === this.speakerStatsComponentAddress
-            || from === this.conferenceDurationComponentAddress)) {
+            || from === this.conferenceDurationComponentAddress
+            || from === this.plogComponentAddress)) {
             return true;
         }
 
@@ -779,6 +786,13 @@ export default class XMPP extends Listenable {
             && parsedJson.created_timestamp) {
             this.eventEmitter.emit(
                 XMPPEvents.CONFERENCE_TIMESTAMP_RECEIVED, parsedJson.created_timestamp);
+        }
+
+        if (parsedJson
+            && parsedJson[JITSI_MEET_MUC_TYPE] === 'participant_log'
+            && parsedJson.log) {
+            this.eventEmitter.emit(
+                XMPPEvents.PARTICIPANT_LOG_RECEIVED, parsedJson.log);
         }
 
         return true;

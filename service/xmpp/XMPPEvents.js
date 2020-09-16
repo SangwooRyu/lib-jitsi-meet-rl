@@ -240,6 +240,11 @@ const XMPPEvents = {
      */
     CONFERENCE_TIMESTAMP_RECEIVED: 'xmpp.conference_timestamp_received',
 
+    /**
+     * Event fired when participants' log is received.
+     */
+    PARTICIPANT_LOG_RECEIVED: 'xmpp.participant_log_received',
+
     // Designates an event indicating that we should join the conference with
     // audio and/or video muted.
     START_MUTED_FROM_FOCUS: 'xmpp.start_muted_from_focus',

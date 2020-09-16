@@ -60,6 +60,7 @@ import {
     createP2PEvent
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
+import ParticipantLog from './modules/plog/plog'
 
 const logger = getLogger(__filename);
 
@@ -388,6 +389,8 @@ JitsiConference.prototype._init = function(options = {}) {
             this.statistics.attachLongTasksStats(this);
         }
     }
+
+    this.plogs = new ParticipantLog(this, this.xmpp);
 
     this.eventManager.setupChatRoomListeners();
 
