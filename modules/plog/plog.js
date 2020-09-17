@@ -74,8 +74,9 @@ export default class ParticipantLog {
      * @param payload - Message
      */
     _onModuleMessageReceived(message) {
+        console.log('Module messsage received in plog module')
         this.log = message;
 
-        this.informChange(message);
+        //this.informChange(message);
     }
 }
