@@ -31,7 +31,7 @@ export default class SpeakerStatsCollector {
         const userIdentity = conference.getParticipantIdentityById(userId);
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
-        this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
+        this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
         this.conference = conference;
 
         conference.addEventListener(

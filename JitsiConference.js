@@ -3530,5 +3530,5 @@ JitsiConference.prototype.getParticipantLogIdentity = function(){
 }
 
 JitsiConference.prototype.getParticipantIdentityById = function(id){
-    return this.participants[id].getIdentityId();
+    return this.participants[id]? this.participants[id].getIdentityId() : null;
 }
