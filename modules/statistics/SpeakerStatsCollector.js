@@ -232,7 +232,6 @@ export default class SpeakerStatsCollector {
                         speakerStatsToUpdateIdentity.markAsHasLeft();
                     }
                 }
-                }
                 else {
                     if (this.stats.usersIdentity[userIdentity]) {
                         speakerStatsToUpdateIdentity = this.stats.usersIdentity[userIdentity];
