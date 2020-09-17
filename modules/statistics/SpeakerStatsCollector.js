@@ -21,12 +21,17 @@ export default class SpeakerStatsCollector {
 
                 // userId: SpeakerStats
             },
+            usersIdentity:{
+                // user Identity: SpeakerStats
+            },
             dominantSpeakerId: null
         };
 
         const userId = conference.myUserId();
+        const userIdentity = conference.getParticipantIdentityById(userId);
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
+        this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
         this.conference = conference;
 
         conference.addEventListener(
@@ -83,6 +88,17 @@ export default class SpeakerStatsCollector {
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
         }
+
+        const userIdentity = conference.getParticipantIdentityById(userId);
+
+        if (!userIdentity){
+            this.stats.usersIdentity[userId] = new SpeakerStats(userId, participant.getDisplayName());
+        }
+        else{
+            if (!this.stats.usersIdentity[userIdentity]){
+                this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
+            }
+        }
     }
 
     /**
@@ -95,10 +111,26 @@ export default class SpeakerStatsCollector {
      */
     _onUserLeave(userId) {
         const savedUser = this.stats.users[userId];
+        const userIdentity = conference.getParticipantIdentityById(userId);
 
         if (savedUser) {
             savedUser.markAsHasLeft();
         }
+
+        if (!userIdentity){
+            const savedUserIdentity = this.stats.usersIdentity[userId];
+
+            if (savedUserIdentity){
+                savedUserIdentity.markAsHasLeft();
+            }
+        }
+        else {
+            const savedUserIdentity = this.stats.usersIdentity[userIdentity];
+
+            if (savedUserIdentity){
+                savedUserIdentity.markAsHasLeft();
+            }
+        }   
     }
 
     /**
@@ -111,9 +143,25 @@ export default class SpeakerStatsCollector {
      */
     _onDisplayNameChange(userId, newName) {
         const savedUser = this.stats.users[userId];
+        const userIdentity = conference.getParticipantIdentityById(userId);
 
         if (savedUser) {
             savedUser.setDisplayName(newName);
+        }
+
+        if (!userIdentity){
+            const savedUserIdentity = this.stats.usersIdentity[userId];
+
+            if (savedUserIdentity){
+                savedUserIdentity.setDisplayName(newName);
+            }
+        }
+        else {
+            const savedUserIdentity = this.stats.usersIdentity[userIdentity];
+
+            if (savedUserIdentity){
+                savedUserIdentity.setDisplayName(newName);
+            }
         }
     }
 
@@ -126,6 +174,10 @@ export default class SpeakerStatsCollector {
      */
     getStats() {
         return this.stats.users;
+    }
+
+    getStatsIdentity(){
+        return this.stats.usersIdentity;
     }
 
     /**
@@ -158,6 +210,45 @@ export default class SpeakerStatsCollector {
 
             speakerStatsToUpdate.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
+
+            
+            let speakerStatsToUpdateIdentity;
+
+            if (!newParticipant || !newParticipant.isHidden()) {
+                const userIdentity = conference.getParticipantIdentityById(userId);
+
+                if (!userIdentity) {
+                    if (this.stats.usersIdentity[userId]) {
+                        speakerStatsToUpdateIdentity = this.stats.usersIdentity[userId];
+    
+                        if (!speakerStatsToUpdateIdentity.getDisplayName()) {
+                            speakerStatsToUpdateIdentity
+                                .setDisplayName(newStats[userId].displayName);
+                        }
+                    } else {
+                        speakerStatsToUpdateIdentity = new SpeakerStats(
+                            userId, newStats[userId].displayName);
+                        this.stats.usersIdentity[userId] = speakerStatsToUpdateIdentity;
+                        speakerStatsToUpdateIdentity.markAsHasLeft();
+                    }
+                }
+                }
+                else {
+                    if (this.stats.usersIdentity[userIdentity]) {
+                        speakerStatsToUpdateIdentity = this.stats.usersIdentity[userIdentity];
+    
+                        if (!speakerStatsToUpdateIdentity.getDisplayName()) {
+                            speakerStatsToUpdateIdentity
+                                .setDisplayName(newStats[userId].displayName);
+                        }
+                    } else {
+                        speakerStatsToUpdateIdentity = new SpeakerStats(
+                            userId, newStats[userId].displayName);
+                        this.stats.usersIdentity[userIdentity] = speakerStatsToUpdateIdentity;
+                        speakerStatsToUpdateIdentity.markAsHasLeft();
+                    }
+                }
+            }
         }
     }
 }

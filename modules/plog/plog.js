@@ -19,6 +19,7 @@ export default class ParticipantLog {
         this.xmpp = xmpp;
 
         this.log = null;
+        this.logIdentity = {};
 
         xmpp.addListener(
             XMPPEvents.PARTICIPANT_LOG_RECEIVED,
@@ -29,6 +30,10 @@ export default class ParticipantLog {
         return this.log;
     }
 
+    getLogIdentity(){
+        return this.logIdentity;
+    }
+
     /**
      * Received message from prosody module.
      * 
@@ -36,5 +41,16 @@ export default class ParticipantLog {
      */
     _onModuleMessageReceived(message) {
         this.log = message;
+
+        for (const userId in message){
+            const participantIdentity = this.conference.getParticipantIdentityById(userId);
+
+            if(!this.logIdentity[participantIdentity]){
+                this.logIdentity[participantIdentity] = message[userId];
+            }
+            else{
+                this.logIdentity[participantIdentity]["leaveTime"] = null;
+            }
+        }
     }
 }
