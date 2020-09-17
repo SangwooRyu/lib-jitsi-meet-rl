@@ -45,11 +45,18 @@ export default class ParticipantLog {
         for (const userId in message){
             const participantIdentity = this.conference.getParticipantIdentityById(userId);
 
-            if(!this.logIdentity[participantIdentity]){
-                this.logIdentity[participantIdentity] = message[userId];
+            if(!participantIdentity){ 
+                if(!this.logIdentity[userId]){
+                    this.logIdentity[userId] = message[userId];
+                }
             }
             else{
-                this.logIdentity[participantIdentity]["leaveTime"] = null;
+                if(!this.logIdentity[participantIdentity]){
+                    this.logIdentity[participantIdentity] = message[userId];
+                }
+                else{
+                    this.logIdentity[participantIdentity]["leaveTime"] = null;
+                }
             }
         }
     }

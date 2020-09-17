@@ -3289,6 +3289,10 @@ JitsiConference.prototype.getSpeakerStats = function() {
     return this.speakerStatsCollector.getStats();
 };
 
+JitsiConference.prototype.getSpeakerStatsIdentity = function() {
+    return this.speakerStatsCollector.getStatsIdentity();
+};
+
 /**
  * Sets the maximum video size the local participant should receive from remote
  * participants.
@@ -3519,6 +3523,10 @@ JitsiConference.prototype.lobbyApproveAccess = function(id) {
 
 JitsiConference.prototype.getParticipantLog = function(){
     return this.plogs.getLog();
+}
+
+JitsiConference.prototype.getParticipantLogIdentity = function(){
+    return this.plogs.getLogIdentity();
 }
 
 JitsiConference.prototype.getParticipantIdentityById = function(id){
