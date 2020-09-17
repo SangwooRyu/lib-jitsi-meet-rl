@@ -3515,3 +3515,8 @@ JitsiConference.prototype.lobbyApproveAccess = function(id) {
         this.room.getLobby().approveAccess(id);
     }
 };
+
+
+JitsiConference.prototype.getParticipantLog = function(){
+    return this.plogs.getLog();
+}

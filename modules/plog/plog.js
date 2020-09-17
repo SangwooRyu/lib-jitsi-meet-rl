@@ -5,6 +5,9 @@ import { Strophe } from 'strophe.js';
 
 const logger = getLogger(__filename);
 
+const MESSAGE_PARTICIPANT_JOIN = 'participant-join';
+const MESSAGE_PARTICIPANT_LEAVE = 'participant-leave';
+
 export default class ParticipantLog {
 
     /**
@@ -28,9 +31,41 @@ export default class ParticipantLog {
             this._onEndPointMessageReceived.bind(this));
     }
 
+    getLog(){
+        return this.log;
+    }
+
+    informJoin(log) {
+        this.conference.sendMessage({
+            type: MESSAGE_PARTICIPANT_JOIN,
+            event: {
+                log
+            }
+        });
+
+        this.conference.eventEmitter.emit(
+            JitsiConferenceEvents.PARTICIPANT_JOIN_LOG,
+            log
+        );
+    }
+
+    informLeave(log) {
+        this.conference.sendMessage({
+            type: MESSAGE_PARTICIPANT_LEAVE,
+            event: {
+                log
+            }
+        });
+
+        this.conference.eventEmitter.emit(
+            JitsiConferenceEvents.PARTICIPANT_LEAVE_LOG,
+            log
+        );
+    }
+
     /**
      * Received message from another user.
-     * @param {Object} message - Message received.
+     * @param {Object} message - Message
      */
     _onEndPointMessageReceived(from, message) {
         logger.log(`Received Endpoint Message from ${from}, ${message}`);
@@ -39,9 +74,13 @@ export default class ParticipantLog {
     /**
      * Received message from prosody module.
      * 
-     * @param payload - Poll to notify
+     * @param payload - Message
      */
     _onModuleMessageReceived(message) {
-        logger.log(`Received Module Message ${message.toString()}`);
+        logger.log(`Received Module Message ${message}`);
+
+        this.log = message;
+
+        this.informJoin(message);
     }
 }
