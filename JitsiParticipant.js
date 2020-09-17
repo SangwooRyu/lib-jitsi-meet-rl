@@ -277,4 +277,8 @@ export default class JitsiParticipant {
     getBotType() {
         return this._botType;
     }
+
+    getIdentityId(){
+        return this._identity? this._identity.user.id : null;
+    }
 }

@@ -3520,3 +3520,7 @@ JitsiConference.prototype.lobbyApproveAccess = function(id) {
 JitsiConference.prototype.getParticipantLog = function(){
     return this.plogs.getLog();
 }
+
+JitsiConference.prototype.getParticipantIdentityById = function(id){
+    return this.participants[id].getIdentityId();
+}
