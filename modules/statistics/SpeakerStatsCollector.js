@@ -89,7 +89,7 @@ export default class SpeakerStatsCollector {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
         }
 
-        const userIdentity = conference.getParticipantIdentityById(userId);
+        const userIdentity = this.conference.getParticipantIdentityById(userId);
 
         if (!userIdentity){
             this.stats.usersIdentity[userId] = new SpeakerStats(userId, participant.getDisplayName());
@@ -111,7 +111,7 @@ export default class SpeakerStatsCollector {
      */
     _onUserLeave(userId) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = conference.getParticipantIdentityById(userId);
+        const userIdentity = this.conference.getParticipantIdentityById(userId);
 
         if (savedUser) {
             savedUser.markAsHasLeft();
@@ -143,7 +143,7 @@ export default class SpeakerStatsCollector {
      */
     _onDisplayNameChange(userId, newName) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = conference.getParticipantIdentityById(userId);
+        const userIdentity = this.conference.getParticipantIdentityById(userId);
 
         if (savedUser) {
             savedUser.setDisplayName(newName);
@@ -215,7 +215,7 @@ export default class SpeakerStatsCollector {
             let speakerStatsToUpdateIdentity;
 
             if (!newParticipant || !newParticipant.isHidden()) {
-                const userIdentity = conference.getParticipantIdentityById(userId);
+                const userIdentity = this.conference.getParticipantIdentityById(userId);
 
                 if (!userIdentity) {
                     if (this.stats.usersIdentity[userId]) {
