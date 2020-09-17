@@ -1412,6 +1412,10 @@ JitsiConference.prototype.getParticipantById = function(id) {
     return this.participants[id];
 };
 
+JitsiConference.prototype.getParticipantJidById = function(id) {
+    return this.participants[id].getJid();
+};
+
 /**
  * Grant owner rights to the participant.
  * @param {string} id id of the participant to grant owner rights to.
