@@ -82,16 +82,6 @@ export const DOMINANT_SPEAKER_CHANGED = 'conference.dominantSpeaker';
 export const CONFERENCE_CREATED_TIMESTAMP = 'conference.createdTimestamp';
 
 /**
- * UTC conference timestamp when first participant joined.
- */
-export const PARTICIPANT_JOIN_LOG = 'conference.participant_join_log';
-
-/**
- * UTC conference timestamp when first participant joined.
- */
-export const PARTICIPANT_LEAVE_LOG = 'conference.participant_leave_log';
-
-/**
  * Indicates that DTMF support changed.
  */
 export const DTMF_SUPPORT_CHANGED = 'conference.dtmfSupportChanged';
