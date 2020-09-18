@@ -24,6 +24,9 @@ export default class SpeakerStatsCollector {
             usersIdentity:{
                 // user Identity: SpeakerStats
             },
+            userIdMatching: {
+                // userId and Identity matching
+            },
             dominantSpeakerId: null
         };
 
@@ -34,8 +37,10 @@ export default class SpeakerStatsCollector {
 
         if(!userIdentity){
             this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
+            this.stats.userIdMatching[userId] = userId;
         }
         else{
+            this.stats.userIdMatching[userId] = userIdentity;
             this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
         }
         this.conference = conference;
@@ -76,8 +81,8 @@ export default class SpeakerStatsCollector {
         oldDominantSpeaker && oldDominantSpeaker.setDominantSpeaker(false);
         newDominantSpeaker && newDominantSpeaker.setDominantSpeaker(true);
 
-        const userIdentityOld = this.conference.getParticipantIdentityById(this.stats.dominantSpeakerId);
-        const userIdentityNew = this.conference.getParticipantIdentityById(dominantSpeakerId);
+        const userIdentityOld = this.stats.userIdMatching[this.stats.dominantSpeakerId];
+        const userIdentityNew = this.stats.userIdMatching[dominantSpeakerId];
         
         let oldDominantSpeakerIdentity;
         let newDominantSpeakerIdentity;
@@ -127,9 +132,11 @@ export default class SpeakerStatsCollector {
 
         if (!userIdentity){
             this.stats.usersIdentity[userId] = new SpeakerStats(userId, participant.getDisplayName());
+            this.stats.userIdMatching[userId] = userId;
         }
         else {
             if (!this.stats.usersIdentity[userIdentity]){
+                this.stats.userIdMatching[userId] = userIdentity;
                 this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
             }
         }
@@ -145,9 +152,7 @@ export default class SpeakerStatsCollector {
      */
     _onUserLeave(userId) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = this.conference.getParticipantIdentityById(userId);
-
-        console.log('userIdentity is ', userIdentity);
+        const userIdentity = this.stats.userIdMatching[userId];
 
         if (savedUser) {
             savedUser.markAsHasLeft();
@@ -179,7 +184,7 @@ export default class SpeakerStatsCollector {
      */
     _onDisplayNameChange(userId, newName) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = this.conference.getParticipantIdentityById(userId);
+        const userIdentity = this.stats.userIdMatching[userId];
 
         if (savedUser) {
             savedUser.setDisplayName(newName);
@@ -251,7 +256,7 @@ export default class SpeakerStatsCollector {
             let speakerStatsToUpdateIdentity;
 
             if (!newParticipant || !newParticipant.isHidden()) {
-                const userIdentity = this.conference.getParticipantIdentityById(userId);
+                const userIdentity = this.stats.userIdMatching[userId];
 
                 if (!userIdentity) {
                     if (this.stats.usersIdentity[userId]) {
