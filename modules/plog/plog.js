@@ -51,9 +51,7 @@ export default class ParticipantLog {
             const participantIdentity = this.userIdMatching[userId];
 
             if(!participantIdentity){ 
-                if(!this.logIdentity[userId]){
-                    this.logIdentity[userId] = message[userId];
-                }
+                this.logIdentity[userId] = message[userId];
             }
             else{
                 if(!this.logIdentity[participantIdentity]){
