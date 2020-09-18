@@ -128,7 +128,7 @@ export default class SpeakerStatsCollector {
         if (!userIdentity){
             this.stats.usersIdentity[userId] = new SpeakerStats(userId, participant.getDisplayName());
         }
-        else{
+        else {
             if (!this.stats.usersIdentity[userIdentity]){
                 this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
             }
@@ -146,6 +146,8 @@ export default class SpeakerStatsCollector {
     _onUserLeave(userId) {
         const savedUser = this.stats.users[userId];
         const userIdentity = this.conference.getParticipantIdentityById(userId);
+
+        console.log('userIdentity is ', userIdentity);
 
         if (savedUser) {
             savedUser.markAsHasLeft();
