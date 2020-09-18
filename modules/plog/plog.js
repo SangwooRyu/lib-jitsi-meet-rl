@@ -20,6 +20,7 @@ export default class ParticipantLog {
 
         this.log = null;
         this.logIdentity = {};
+        this.userIdMatching = {};
 
         xmpp.addListener(
             XMPPEvents.PARTICIPANT_LOG_RECEIVED,
@@ -43,7 +44,11 @@ export default class ParticipantLog {
         this.log = message;
 
         for (const userId in message){
-            const participantIdentity = this.conference.getParticipantIdentityById(userId);
+            if(!this.userIdMatching[userId]){
+                this.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
+            }
+
+            const participantIdentity = this.userIdMatching[userId];
 
             if(!participantIdentity){ 
                 if(!this.logIdentity[userId]){
