@@ -31,7 +31,13 @@ export default class SpeakerStatsCollector {
         const userIdentity = conference.getParticipantIdentityById(userId);
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
-        this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
+
+        if(!userIdentity){
+            this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
+        }
+        else{
+            this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
+        }
         this.conference = conference;
 
         conference.addEventListener(
@@ -69,6 +75,34 @@ export default class SpeakerStatsCollector {
 
         oldDominantSpeaker && oldDominantSpeaker.setDominantSpeaker(false);
         newDominantSpeaker && newDominantSpeaker.setDominantSpeaker(true);
+
+        const userIdentityOld = this.conference.getParticipantIdentityById(this.stats.dominantSpeakerId);
+        const userIdentityNew = this.conference.getParticipantIdentityById(dominantSpeakerId);
+        
+        let oldDominantSpeakerIdentity;
+        let newDominantSpeakerIdentity;
+
+        if (!userIdentityOld){
+            oldDominantSpeakerIdentity
+            = this.stats.usersIdentity[this.stats.dominantSpeakerId];
+        }
+        else {
+            oldDominantSpeakerIdentity
+            = this.stats.usersIdentity[userIdentityOld];
+        }
+
+        if (!userIdentityNew){
+            newDominantSpeakerIdentity
+            = this.stats.usersIdentity[dominantSpeakerId];
+        }
+        else {
+            newDominantSpeakerIdentity
+            = this.stats.usersIdentity[userIdentityNew];
+        }
+        
+        oldDominantSpeakerIdentity && oldDominantSpeakerIdentity.setDominantSpeaker(false);
+        newDominantSpeakerIdentity && newDominantSpeakerIdentity.setDominantSpeaker(true);
+    
         this.stats.dominantSpeakerId = dominantSpeakerId;
     }
 
