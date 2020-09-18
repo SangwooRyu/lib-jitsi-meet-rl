@@ -248,6 +248,9 @@ export default class SpeakerStatsCollector {
                     }
                 }
             }
+
+            speakerStatsToUpdateIdentity.totalDominantSpeakerTime
+                = newStats[userId].totalDominantSpeakerTime;
         }
     }
 }
