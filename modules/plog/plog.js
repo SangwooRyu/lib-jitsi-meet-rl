@@ -56,9 +56,7 @@ export default class ParticipantLog {
                 }
             }
             else{
-                if(!this.logIdentity[participantIdentity]){
-                    this.logIdentity[participantIdentity] = message[userId];
-                }
+                this.logIdentity[participantIdentity] = message[userId];
             }
         }
     }
