@@ -262,6 +262,9 @@ export default class SpeakerStatsCollector {
             speakerStatsToUpdate.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
 
+            if(!this.stats.userIdMatching[userId]){
+                this.stats.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
+            }
             
             let speakerStatsToUpdateIdentity;
 
