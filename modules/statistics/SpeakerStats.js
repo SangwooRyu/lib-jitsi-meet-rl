@@ -125,6 +125,10 @@ class SpeakerStats {
         this._hasLeft = true;
         this.setDominantSpeaker(false);
     }
+
+    markAsHasJoined() {
+        this._hasLeft = false;
+    }
 }
 
 module.exports = SpeakerStats;

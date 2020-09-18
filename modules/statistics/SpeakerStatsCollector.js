@@ -139,6 +139,9 @@ export default class SpeakerStatsCollector {
                 this.stats.userIdMatching[userId] = userIdentity;
                 this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
             }
+            else {
+                this.stats.usersIdentity[userIdentity].markAsHasJoined();
+            }
         }
     }
 
