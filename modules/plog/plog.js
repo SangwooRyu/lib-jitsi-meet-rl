@@ -54,11 +54,6 @@ export default class ParticipantLog {
                 if(!this.logIdentity[participantIdentity]){
                     this.logIdentity[participantIdentity] = message[userId];
                 }
-                else{
-                    if(this.logIdentity[participantIdentity]["leaveTime"]){
-                        this.logIdentity[participantIdentity]["leaveTime"] = null;
-                    }
-                }
             }
         }
     }
