@@ -40,8 +40,15 @@ export default class SpeakerStatsCollector {
             this.stats.userIdMatching[userId] = userId;
         }
         else{
-            this.stats.userIdMatching[userId] = userIdentity;
-            this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
+            if (!this.stats.usersIdentity[userIdentity]){
+                this.stats.userIdMatching[userId] = userIdentity;
+                this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
+            }
+            else{
+                this.stats.userIdMatching[userId] = userIdentity;
+                this.stats.usersIdentity[userIdentity].markAsHasJoined();
+            }
+
         }
         this.conference = conference;
 
