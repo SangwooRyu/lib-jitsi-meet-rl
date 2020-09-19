@@ -48,7 +48,7 @@ export default class ParticipantLog {
         this.log = message;
 
         for (const userId in message){
-            idFromPacket = this._convertStringToXML(message[userId]["sessions"]).getElementsByTagName("id")[0].childNodes[0].nodeValue;
+            var idFromPacket = this._convertStringToXML(message[userId]["sessions"]).getElementsByTagName("id")[0].childNodes[0].nodeValue;
 
             console.log('Received id from Packet ', idFromPacket);
 
