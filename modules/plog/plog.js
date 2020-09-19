@@ -53,14 +53,23 @@ export default class ParticipantLog {
 
             let idFromPacket = null;
             if(xmlPacket){
-                if(xmlPacket.tags[7].name == "identity")
-                    idFromPacket = xmlPacket.tags[7].tags[0].__array[0];
+                if(xmlPacket.tags[7]){
+                    if(xmlPacket.tags[7].name == "identity"){
+                        //should change to access packet by object's tag/name
+                        idFromPacket = xmlPacket.tags[7].tags[0].tags[4].__array[0];
+                    }
+                }
             }
 
             console.log('Received id from Packet ', idFromPacket);
 
             if(!this.userIdMatching[userId]){
-                this.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
+                if(idFromPacket){
+                    this.userIdMatching[userId] = idFromPacket;
+                }
+                else {
+                    this.userIdMatching[userId] = userId;
+                }
             }
 
             const participantIdentity = this.userIdMatching[userId];
