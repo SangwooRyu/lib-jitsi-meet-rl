@@ -51,8 +51,11 @@ export default class ParticipantLog {
             var xmlPacket = this._convertStringToXML(message[userId]["sessions"]);
 
             let idFromPacket = null;
+            console.log('xmlPacket ', xmlPacket);
             if(xmlPacket){
                 const isIdFromPacket = xmlPacket.getElementsByTagName("id")[0];
+
+                console.log('isIdFromPacket ', isIdFromPacket);
 
                 if(isIdFromPacket)
                     idFromPacket = isIdFromPacket.childNodes[0].nodeValue;
