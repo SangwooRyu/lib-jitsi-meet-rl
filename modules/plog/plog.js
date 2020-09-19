@@ -84,7 +84,7 @@ export default class ParticipantLog {
         try {
             const xmlDom = new DOMParser().parseFromString(xml, 'text/xml');
 
-            return $(xmlDom);
+            return xmlDom;
         } catch (e) {
             logger.error('Attempted to convert incorrectly formatted xml');
 
