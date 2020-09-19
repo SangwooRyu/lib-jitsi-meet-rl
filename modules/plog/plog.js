@@ -54,11 +54,11 @@ export default class ParticipantLog {
             let idFromPacket = null;
             if(xmlPacket){
                 let find = false;
-                for(var i = 0; i < Object.keys(xmlPacket.tags).length; i++){
+                for(var i = 0; i < xmlPacket.tags.length; i++){
                     if(xmlPacket.tags[i].name == "identity"){
-                        for(var j = 0; j < Object.keys(xmlPacket.tags[i].tags).length; j++){
+                        for(var j = 0; j < xmlPacket.tags[i].tags.length; j++){
                             if(xmlPacket.tags[i].tags[j].name == "user"){
-                                for(var k = 0; k < Object.keys(xmlPacket.tags[i].tags[j].tags).length; k++){
+                                for(var k = 0; k < xmlPacket.tags[i].tags[j].tags.length; k++){
                                     if(xmlPacket.tags[i].tags[j].tags[k] == "id"){
                                         idFromPacket = xmlPacket.tags[i].tags[j].tags[k].__array[0];
                                         find = true;
