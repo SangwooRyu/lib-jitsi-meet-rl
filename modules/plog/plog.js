@@ -53,10 +53,26 @@ export default class ParticipantLog {
 
             let idFromPacket = null;
             if(xmlPacket){
-                if(xmlPacket.tags[7]){
-                    if(xmlPacket.tags[7].name == "identity"){
-                        //should change to access packet by object's tag/name
-                        idFromPacket = xmlPacket.tags[7].tags[0].tags[4].__array[0];
+                let find = false;
+                for(var i = 0; i < Object.keys(xmlPacket.tags); i++){
+                    if(xmlPacket.tags[i].name == "identity"){
+                        for(var j = 0; j < Object.keys(xmlPacket.tags[i].tags); j++){
+                            if(xmlPacket[i].tags[i].tags[j].name == "user"){
+                                for(var k = 0; k < Object.keys(xmlPacket.tags[i].tags[j].tags); k++){
+                                    if(xmlPacket[i].tags[i].tags[j].tags[k] == "id"){
+                                        idFromPacket = xmlPacket.tags[i].tags[j].tags[k].__array[0];
+                                        find = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(find){
+                                break;
+                            }
+                        }
+                    }
+                    if(find){
+                        break;
                     }
                 }
             }
