@@ -48,6 +48,7 @@ export default class ParticipantLog {
         this.log = message;
 
         for (const userId in message){
+            console.log('originalPacket ', message[userId]["sessions"]);
             var xmlPacket = this._convertStringToXML(message[userId]["sessions"]);
 
             let idFromPacket = null;
