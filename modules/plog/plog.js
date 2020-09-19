@@ -51,6 +51,8 @@ export default class ParticipantLog {
             console.log('originalPacket ', message[userId]["sessions"]);
             var xmlPacket = message[userId]["sessions"];
 
+            console.log('xmlPacket type is ', typeof xmlPacket);
+
             let idFromPacket = null;
             console.log('xmlPacket ', xmlPacket);
             if(xmlPacket){
