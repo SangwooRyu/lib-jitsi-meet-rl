@@ -59,7 +59,7 @@ export default class ParticipantLog {
                         for(var j = 0; j < xmlPacket.tags[i].tags.length; j++){
                             if(xmlPacket.tags[i].tags[j].name == "user"){
                                 for(var k = 0; k < xmlPacket.tags[i].tags[j].tags.length; k++){
-                                    if(xmlPacket.tags[i].tags[j].tags[k] == "id"){
+                                    if(xmlPacket.tags[i].tags[j].tags[k].name == "id"){
                                         idFromPacket = xmlPacket.tags[i].tags[j].tags[k].__array[0];
                                         find = true;
                                         break;
