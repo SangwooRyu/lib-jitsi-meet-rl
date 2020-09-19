@@ -35,6 +35,10 @@ export default class ParticipantLog {
         return this.logIdentity;
     }
 
+    getIdMathcing(){
+        return this.userIdMatching;
+    }
+
     /**
      * Received message from prosody module.
      * 
@@ -44,6 +48,10 @@ export default class ParticipantLog {
         this.log = message;
 
         for (const userId in message){
+            idFromPacket = _convertStringToXML(xml).getElementsByTagName("id")[0].childNodes[0].nodeValue;
+
+            console.log('Received id from Packet ', idFromPacket);
+
             if(!this.userIdMatching[userId]){
                 this.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
             }
@@ -61,6 +69,26 @@ export default class ParticipantLog {
                     this.logIdentity[participantIdentity]["leaveTime"] = message[userId]["leaveTime"];
                 }
             }
+        }
+    }
+
+    /**
+     * Transforms a stringified xML into a XML wrapped in jQuery.
+     *
+     * @param {string} xml - The XML in string form.
+     * @private
+     * @returns {Object|null} A jQuery version of the xml. Null will be returned
+     * if an error is encountered during transformation.
+     */
+    _convertStringToXML(xml) {
+        try {
+            const xmlDom = new DOMParser().parseFromString(xml, 'text/xml');
+
+            return $(xmlDom);
+        } catch (e) {
+            logger.error('Attempted to convert incorrectly formatted xml');
+
+            return null;
         }
     }
 }
