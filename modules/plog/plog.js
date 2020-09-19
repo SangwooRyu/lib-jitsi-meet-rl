@@ -51,17 +51,10 @@ export default class ParticipantLog {
             console.log('originalPacket ', message[userId]["sessions"]);
             var xmlPacket = message[userId]["sessions"];
 
-            console.log('xmlPacket type is ', typeof xmlPacket);
-
             let idFromPacket = null;
-            console.log('xmlPacket ', xmlPacket);
             if(xmlPacket){
-                const isIdFromPacket = xmlPacket.getElementsByTagName("id")[0];
-
-                console.log('isIdFromPacket ', isIdFromPacket);
-
-                if(isIdFromPacket)
-                    idFromPacket = isIdFromPacket.childNodes[0].nodeValue;
+                if(xmlPacket.tags[7].name == "identity")
+                    idFromPacket = xmlPacket.tags[7].tags[0].__array[0];
             }
 
             console.log('Received id from Packet ', idFromPacket);
