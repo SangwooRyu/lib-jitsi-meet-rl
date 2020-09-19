@@ -48,7 +48,6 @@ export default class ParticipantLog {
         this.log = message;
 
         for (const userId in message){
-            console.log('originalPacket ', message[userId]["sessions"]);
             var xmlPacket = message[userId]["sessions"];
 
             let idFromPacket = null;
@@ -76,8 +75,6 @@ export default class ParticipantLog {
                     }
                 }
             }
-
-            console.log('Received id from Packet ', idFromPacket);
 
             if(!this.userIdMatching[userId]){
                 if(idFromPacket){
