@@ -86,19 +86,38 @@ export default class ParticipantLog {
             }
 
             if(!idFromPacket) {
-                console.log('No idFromPacket, userId is ', userId);
                 this.logIdentity[userId] = message[userId];
             }
             else{
                 if(!this.logIdentity[idFromPacket]){
-                    console.log('No logIdentity for ', idFromPacket);
                     this.logIdentity[idFromPacket] = message[userId];
                 }
                 else {
-                    console.log('Safe for ', idFromPacket);
-                    this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
+                    if(this.time_convert(message[userId]["joinTime"]) < this.logIdentity[idFromPacket]["joinTime"]){ //incoming is older
+                        this.logIdentity[idFromPacket]["joinTime"] = message[userId]["joinTime"];
+                    }
+                    else { //incoming is newer
+                        this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
+                    }
                 }
             }
         }
+    }
+
+    time_convert(time) {
+        var yyyy = hms["year"];
+        var mo = hms["month"];
+        var dd = hms["day"];
+        var hh = hms["hour"];
+        var mm = hms["min"];
+        var ss = hms["sec"];
+
+        return Number([yyyy,
+                (mo>9 ? '' : '0') + mo,
+                (dd>9 ? '' : '0') + dd,
+                (hh>9 ? '' : '0') + hh, 
+                (mm>9 ? '' : '0') + mm, 
+                (ss>9 ? '' : '0') + ss,
+                ].join(''));
     }
 }
