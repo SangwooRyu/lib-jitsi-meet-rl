@@ -46,6 +46,7 @@ export default class ParticipantLog {
      */
     _onModuleMessageReceived(message) {
         this.log = message;
+        var latestIncome = {};
 
         for (const userId in message){
             var xmlPacket = message[userId]["sessions"];
@@ -93,20 +94,20 @@ export default class ParticipantLog {
                     this.logIdentity[idFromPacket] = message[userId];
                 }
                 else {
+                    if(!latestIncome[idFromPacket]){
+                        latestIncome[idFromPacket] = message[userId];
+                    }
+                    else {
+                        if(this.time_convert(message[userId]["joinTime"]) > this.time_convert(latestIncome[idFromPacket]["joinTime"])){
+                            latestIncome[idFromPacket] = message[userId];
+                        }
+                    }
+
                     if(this.time_convert(message[userId]["joinTime"]) < this.time_convert(this.logIdentity[idFromPacket]["joinTime"])){ //incoming is older
                         this.logIdentity[idFromPacket]["joinTime"] = message[userId]["joinTime"];
                     }
-                    
-                    if(this.logIdentity[idFromPacket]["leaveTime"]){
-                        if(!message[userId]["leaveTime"]){
-                            this.logIdentity[idFromPacket]["leaveTime"] = null;
-                        }
-                        else{
-                            if(this.time_convert(message[userId]["leaveTime"]) > this.time_convert(this.logIdentity[idFromPacket]["leaveTime"])){
-                                this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
-                            }
-                        }
-                    }
+
+                    this.logIdentity[idFromPacket]["leaveTime"] = latestIncome[idFromPacket]["leaveTime"];
                 }
             }
         }
