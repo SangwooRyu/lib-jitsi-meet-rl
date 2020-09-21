@@ -87,16 +87,11 @@ export default class ParticipantLog {
 
             const participantIdentity = this.userIdMatching[userId];
 
-            if(!participantIdentity){ 
-                this.logIdentity[userId] = message[userId];
+            if(!this.logIdentity[participantIdentity]){
+                this.logIdentity[participantIdentity] = message[userId];
             }
-            else{
-                if(!this.logIdentity[participantIdentity]){
-                    this.logIdentity[participantIdentity] = message[userId];
-                }
-                else {
-                    this.logIdentity[participantIdentity]["leaveTime"] = message[userId]["leaveTime"];
-                }
+            else {
+                this.logIdentity[participantIdentity]["leaveTime"] = message[userId]["leaveTime"];
             }
         }
     }
