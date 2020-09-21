@@ -100,24 +100,4 @@ export default class ParticipantLog {
             }
         }
     }
-
-    /**
-     * Transforms a stringified xML into a XML wrapped in jQuery.
-     *
-     * @param {string} xml - The XML in string form.
-     * @private
-     * @returns {Object|null} A jQuery version of the xml. Null will be returned
-     * if an error is encountered during transformation.
-     */
-    _convertStringToXML(xml) {
-        try {
-            const xmlDom = new DOMParser().parseFromString(xml, 'text/xml');
-
-            return xmlDom;
-        } catch (e) {
-            logger.error('Attempted to convert incorrectly formatted xml');
-
-            return null;
-        }
-    }
 }

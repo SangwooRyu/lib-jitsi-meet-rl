@@ -31,25 +31,9 @@ export default class SpeakerStatsCollector {
         };
 
         const userId = conference.myUserId();
-        const userIdentity = conference.getParticipantIdentityById(userId);
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
 
-        if(!userIdentity){
-            this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
-            this.stats.userIdMatching[userId] = userId;
-        }
-        else{
-            if (!this.stats.usersIdentity[userIdentity]){
-                this.stats.userIdMatching[userId] = userIdentity;
-                this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, null, true);
-            }
-            else{
-                this.stats.userIdMatching[userId] = userIdentity;
-                this.stats.usersIdentity[userIdentity].markAsHasJoined();
-            }
-
-        }
         this.conference = conference;
 
         conference.addEventListener(
@@ -68,6 +52,9 @@ export default class SpeakerStatsCollector {
             conference.xmpp.addListener(
                 XMPPEvents.SPEAKER_STATS_RECEIVED,
                 this._updateStats.bind(this));
+            conference.xmpp.addListener(
+                XMPPEvents.PARTICIPANT_LOG_RECEIVED,
+                this._updateIdMatching.bind(this));
         }
     }
 
@@ -307,6 +294,58 @@ export default class SpeakerStatsCollector {
 
             speakerStatsToUpdateIdentity.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
+        }
+    }
+
+    _updateIdMatching(message) {
+        for (const userId in message){
+            if(userId != this.conference.myUserId()){
+                continue;
+            }
+
+            var xmlPacket = message[userId]["sessions"];
+
+            let idFromPacket = null;
+            if(xmlPacket){
+                let find = false;
+                for(var i = 0; i < xmlPacket.tags.length; i++){
+                    if(xmlPacket.tags[i].name == "identity"){
+                        for(var j = 0; j < xmlPacket.tags[i].tags.length; j++){
+                            if(xmlPacket.tags[i].tags[j].name == "user"){
+                                for(var k = 0; k < xmlPacket.tags[i].tags[j].tags.length; k++){
+                                    if(xmlPacket.tags[i].tags[j].tags[k].name == "id"){
+                                        idFromPacket = xmlPacket.tags[i].tags[j].tags[k].__array[0];
+                                        find = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(find){
+                                break;
+                            }
+                        }
+                    }
+                    if(find){
+                        break;
+                    }
+                }
+            }
+
+            if(!idFromPacket){
+                this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
+                this.stats.userIdMatching[userId] = userId;
+            }
+            else{
+                if (!this.stats.usersIdentity[idFromPacket]){
+                    this.stats.userIdMatching[userId] = idFromPacket;
+                    this.stats.usersIdentity[idFromPacket] = new SpeakerStats(userId, null, true);
+                }
+                else{
+                    if(this.stats.usersIdentity[idFromPacket].hasLeft()){
+                        this.stats.usersIdentity[idFromPacket].markAsHasJoined();
+                    }
+                }
+            }
         }
     }
 }
