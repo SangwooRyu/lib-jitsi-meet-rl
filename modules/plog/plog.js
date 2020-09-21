@@ -105,12 +105,12 @@ export default class ParticipantLog {
     }
 
     time_convert(time) {
-        var yyyy = hms["year"];
-        var mo = hms["month"];
-        var dd = hms["day"];
-        var hh = hms["hour"];
-        var mm = hms["min"];
-        var ss = hms["sec"];
+        var yyyy = time["year"];
+        var mo = time["month"];
+        var dd = time["day"];
+        var hh = time["hour"];
+        var mm = time["min"];
+        var ss = time["sec"];
 
         return Number([yyyy,
                 (mo>9 ? '' : '0') + mo,
