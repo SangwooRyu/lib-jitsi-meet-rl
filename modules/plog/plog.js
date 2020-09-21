@@ -92,8 +92,8 @@ export default class ParticipantLog {
                 if(!this.logIdentity[idFromPacket]){
                     this.logIdentity[idFromPacket] = message[userId];
                 }
-                else {
-                    if(this.time_convert(message[userId]["joinTime"]) < this.logIdentity[idFromPacket]["joinTime"]){ //incoming is older
+                if (this.logIdentity[idFromPacket]) {
+                    if(this.time_convert(message[userId]["joinTime"]) < this.time_convert(this.logIdentity[idFromPacket]["joinTime"])){ //incoming is older
                         this.logIdentity[idFromPacket]["joinTime"] = message[userId]["joinTime"];
                     }
                     else { //incoming is newer
