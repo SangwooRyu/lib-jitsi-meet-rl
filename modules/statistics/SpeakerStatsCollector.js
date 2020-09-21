@@ -338,11 +338,11 @@ export default class SpeakerStatsCollector {
                     this.stats.userIdMatching[userId] = idFromPacket;
                     this.stats.usersIdentity[idFromPacket] = new SpeakerStats(userId, null, true);
                 }
-                else{
+                /*else{
                     if(this.stats.usersIdentity[idFromPacket].hasLeft()){
                         this.stats.usersIdentity[idFromPacket].markAsHasJoined();
                     }
-                }
+                }*/
             }
         }
     }
