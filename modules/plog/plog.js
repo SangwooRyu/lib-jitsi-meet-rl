@@ -85,8 +85,6 @@ export default class ParticipantLog {
                 }
             }
 
-            console.log('Processing ', userId);
-
             if(!idFromPacket) {
                 this.logIdentity[userId] = message[userId];
             }
@@ -95,15 +93,19 @@ export default class ParticipantLog {
                     this.logIdentity[idFromPacket] = message[userId];
                 }
                 else {
-                    console.log('Incoming is ', this.time_convert(message[userId]["joinTime"]));
-                    console.log('Exist is ', this.time_convert(this.logIdentity[idFromPacket]["joinTime"]));
                     if(this.time_convert(message[userId]["joinTime"]) < this.time_convert(this.logIdentity[idFromPacket]["joinTime"])){ //incoming is older
-                        console.log('Incoming is older');
                         this.logIdentity[idFromPacket]["joinTime"] = message[userId]["joinTime"];
                     }
-                    else { //incoming is newer
-                        console.log('Incoming is newer');
-                        this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
+                    
+                    if(this.logIdentity[idFromPacket]["leaveTime"]){
+                        if(!message[userId]["leaveTime"]){
+                            this.logIdentity[idFromPacket]["leaveTime"] = null;
+                        }
+                        else{
+                            if(this.time_convert(message[userId]["leaveTime"]) > this.time_convert(this.logIdentity[idFromPacket]["leaveTime"])){
+                                this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
+                            }
+                        }
                     }
                 }
             }
