@@ -85,14 +85,17 @@ export default class ParticipantLog {
                 }
             }
 
-            if(!idFromPacket) { 
+            if(!idFromPacket) {
+                console.log('No idFromPacket, userId is ', userId);
                 this.logIdentity[userId] = message[userId];
             }
             else{
                 if(!this.logIdentity[idFromPacket]){
+                    console.log('No logIdentity for ', idFromPacket);
                     this.logIdentity[idFromPacket] = message[userId];
                 }
                 else {
+                    console.log('Safe for ', idFromPacket);
                     this.logIdentity[idFromPacket]["leaveTime"] = message[userId]["leaveTime"];
                 }
             }
