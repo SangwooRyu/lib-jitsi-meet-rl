@@ -52,7 +52,7 @@ export default class ParticipantLog {
     }
 
     /**
-     * Return logIdentity
+     * Return userIdMatching
      * 
      */
     getIdMathcing(){
@@ -111,6 +111,7 @@ export default class ParticipantLog {
 
             //set joinTime, leaveTime
             if(!idFromPacket) {
+                console.log(userId, 'No identity');
                 this.logIdentity[userId] = message[userId];
             }
             else{
@@ -135,6 +136,7 @@ export default class ParticipantLog {
                 }
             }
         }
+        console.log('Final user Identity is ', this.logIdentity);
     }
 
 
