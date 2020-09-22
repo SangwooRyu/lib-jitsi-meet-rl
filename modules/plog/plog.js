@@ -5,6 +5,9 @@ import { Strophe } from 'strophe.js';
 
 const logger = getLogger(__filename);
 
+/**
+ * A collection for tracking participant log (joinTime, leaveTime).
+ */
 export default class ParticipantLog {
 
     /**
@@ -18,8 +21,13 @@ export default class ParticipantLog {
         this.conference = conference;
         this.xmpp = xmpp;
 
+        //log index by jid { joinTime, leaveTime }
         this.log = null;
+
+        //log index by account's own id { joinTime, leaveTime }
         this.logIdentity = {};
+
+        //matching jid -> account's own id
         this.userIdMatching = {};
 
         xmpp.addListener(
@@ -27,14 +35,26 @@ export default class ParticipantLog {
             this._onModuleMessageReceived.bind(this));
     }
 
+    /**
+     * Return log
+     * 
+     */
     getLog(){
         return this.log;
     }
 
+    /**
+     * Return logIdentity
+     * 
+     */
     getLogIdentity(){
         return this.logIdentity;
     }
 
+    /**
+     * Return logIdentity
+     * 
+     */
     getIdMathcing(){
         return this.userIdMatching;
     }
@@ -52,6 +72,8 @@ export default class ParticipantLog {
             var xmlPacket = message[userId]["sessions"];
 
             let idFromPacket = null;
+            
+            //Find unique id of userId's account 
             if(xmlPacket){
                 let find = false;
                 for(var i = 0; i < xmlPacket.tags.length; i++){
@@ -77,6 +99,7 @@ export default class ParticipantLog {
                 }
             }
 
+            //set userIdMatching
             if(!this.userIdMatching[userId]){
                 if(idFromPacket){
                     this.userIdMatching[userId] = idFromPacket;
@@ -86,6 +109,7 @@ export default class ParticipantLog {
                 }
             }
 
+            //set joinTime, leaveTime
             if(!idFromPacket) {
                 this.logIdentity[userId] = message[userId];
             }
@@ -113,6 +137,11 @@ export default class ParticipantLog {
         }
     }
 
+
+    /**
+     * Convert timestamp to number
+     * ex) 2020.07.15 15:30:26 => 20200715153026
+     */
     time_convert(time) {
         var yyyy = time["year"];
         var mo = time["month"];

@@ -18,14 +18,15 @@ export default class SpeakerStatsCollector {
     constructor(conference) {
         this.stats = {
             users: {
-
                 // userId: SpeakerStats
+                // index by jid
             },
             usersIdentity:{
                 // user Identity: SpeakerStats
+                // index by account's own id
             },
             userIdMatching: {
-                // userId and Identity matching
+                //matching jid -> account's own id
             },
             dominantSpeakerId: null
         };
@@ -75,6 +76,7 @@ export default class SpeakerStatsCollector {
         oldDominantSpeaker && oldDominantSpeaker.setDominantSpeaker(false);
         newDominantSpeaker && newDominantSpeaker.setDominantSpeaker(true);
 
+        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
         const userIdentityOld = this.stats.userIdMatching[this.stats.dominantSpeakerId];
         const userIdentityNew = this.stats.userIdMatching[dominantSpeakerId];
         
@@ -122,6 +124,7 @@ export default class SpeakerStatsCollector {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
         }
 
+        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
         const userIdentity = this.conference.getParticipantIdentityById(userId);
 
         if (!userIdentity){
@@ -134,6 +137,7 @@ export default class SpeakerStatsCollector {
                 this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
             }
             else {
+                this.stats.userIdMatching[userId] = userIdentity;
                 this.stats.usersIdentity[userIdentity].markAsHasJoined();
             }
         }
@@ -155,6 +159,7 @@ export default class SpeakerStatsCollector {
             savedUser.markAsHasLeft();
         }
 
+        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
         if (!userIdentity){
             const savedUserIdentity = this.stats.usersIdentity[userId];
 
@@ -187,6 +192,7 @@ export default class SpeakerStatsCollector {
             savedUser.setDisplayName(newName);
         }
 
+        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
         if (!userIdentity){
             const savedUserIdentity = this.stats.usersIdentity[userId];
 
@@ -214,6 +220,13 @@ export default class SpeakerStatsCollector {
         return this.stats.users;
     }
 
+    /**
+     * Return a copy of the tracked SpeakerStats models that is indexed by account's own id.
+     *
+     * @returns {Object} The keys are the user identitys and the values are the
+     * associated user's SpeakerStats model.
+     * @private
+     */
     getStatsIdentity(){
         return this.stats.usersIdentity;
     }
@@ -249,6 +262,7 @@ export default class SpeakerStatsCollector {
             speakerStatsToUpdate.totalDominantSpeakerTime
                 = newStats[userId].totalDominantSpeakerTime;
 
+            //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
             if(!this.stats.userIdMatching[userId]){
                 this.stats.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
             }
@@ -295,6 +309,8 @@ export default class SpeakerStatsCollector {
         }
     }
 
+    //Update Id Matching by parsing message from participant_log prosody module.
+    //This function is for getting identity of myself. 
     _updateIdMatching(message) {
         for (const userId in message){
             if(userId != this.conference.myUserId()){
@@ -338,11 +354,6 @@ export default class SpeakerStatsCollector {
                     this.stats.userIdMatching[userId] = idFromPacket;
                     this.stats.usersIdentity[idFromPacket] = new SpeakerStats(userId, null, true);
                 }
-                /*else{
-                    if(this.stats.usersIdentity[idFromPacket].hasLeft()){
-                        this.stats.usersIdentity[idFromPacket].markAsHasJoined();
-                    }
-                }*/
             }
         }
     }
