@@ -125,8 +125,17 @@ export default class ResumeTask {
 
         const url = new URL(this._stropheConn.service);
         let { search } = url;
+        const pattern = /(previd=)([\w-]+)/;
+        const oldToken = search.match(pattern);
 
-        search += search.indexOf('?') === -1 ? `?previd=${resumeToken}` : `&previd=${resumeToken}`;
+        // Replace previd if the previd value has changed.
+        if (oldToken && oldToken.indexOf(resumeToken) === -1) {
+            search = search.replace(pattern, `$1${resumeToken}`);
+
+        // Append previd if it doesn't exist.
+        } else if (!oldToken) {
+            search += search.indexOf('?') === -1 ? `?previd=${resumeToken}` : `&previd=${resumeToken}`;
+        }
 
         url.search = search;
 

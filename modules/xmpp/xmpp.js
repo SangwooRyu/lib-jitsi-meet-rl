@@ -8,6 +8,7 @@ import * as JitsiConnectionErrors from '../../JitsiConnectionErrors';
 import * as JitsiConnectionEvents from '../../JitsiConnectionEvents';
 import XMPPEvents from '../../service/xmpp/XMPPEvents';
 import browser from '../browser';
+import { E2EEncryption } from '../e2ee/E2EEncryption';
 import GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import Listenable from '../util/Listenable';
 import RandomUtil from '../util/RandomUtil';
@@ -31,9 +32,10 @@ const logger = getLogger(__filename);
  * @param {string} options.serviceUrl - The service URL for XMPP connection.
  * @param {string} options.enableWebsocketResume - True to enable stream resumption.
  * @param {number} [options.websocketKeepAlive] - See {@link XmppConnection} constructor.
+ * @param {Object} [options.xmppPing] - See {@link XmppConnection} constructor.
  * @returns {XmppConnection}
  */
-function createConnection({ enableWebsocketResume, serviceUrl = '/http-bind', token, websocketKeepAlive }) {
+function createConnection({ enableWebsocketResume, serviceUrl = '/http-bind', token, websocketKeepAlive, xmppPing }) {
     // Append token as URL param
     if (token) {
         // eslint-disable-next-line no-param-reassign
@@ -43,7 +45,8 @@ function createConnection({ enableWebsocketResume, serviceUrl = '/http-bind', to
     return new XmppConnection({
         enableWebsocketResume,
         serviceUrl,
-        websocketKeepAlive
+        websocketKeepAlive,
+        xmppPing
     });
 }
 
@@ -90,6 +93,7 @@ export default class XMPP extends Listenable {
      * module try to resume the session in case the Websocket connection breaks.
      * @param {number} [options.websocketKeepAlive] - The websocket keep alive interval. See {@link XmppConnection}
      * constructor for more details.
+     * @param {Object} [options.xmppPing] - The xmpp ping settings.
      * @param {Array<Object>} options.p2pStunServers see {@link JingleConnectionPlugin} for more details.
      * @param token
      */
@@ -110,7 +114,8 @@ export default class XMPP extends Listenable {
             // FIXME remove deprecated bosh option at some point
             serviceUrl: options.serviceUrl || options.bosh,
             token,
-            websocketKeepAlive: options.websocketKeepAlive
+            websocketKeepAlive: options.websocketKeepAlive,
+            xmppPing: options.xmppPing
         });
 
         this._initStrophePlugins();
@@ -147,7 +152,8 @@ export default class XMPP extends Listenable {
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
 
-        if (!this.options.disableRtx) {
+        // Disable RTX on Firefox because of https://bugzilla.mozilla.org/show_bug.cgi?id=1668028.
+        if (!(this.options.disableRtx || browser.isFirefox())) {
             this.caps.addFeature('urn:ietf:rfc:4588');
         }
         if (this.options.enableOpusRed === true && browser.supportsAudioRed()) {
@@ -175,7 +181,7 @@ export default class XMPP extends Listenable {
             this.caps.addFeature('urn:xmpp:rayo:client:1');
         }
 
-        if (browser.supportsInsertableStreams() && !(this.options.testing && this.options.testing.disableE2EE)) {
+        if (E2EEncryption.isSupported(this.options)) {
             this.caps.addFeature('https://jitsi.org/meet/e2ee');
         }
     }
@@ -208,12 +214,8 @@ export default class XMPP extends Listenable {
             now);
 
         this.eventEmitter.emit(XMPPEvents.CONNECTION_STATUS_CHANGED, credentials, status, msg);
-        if (status === Strophe.Status.CONNECTED
-            || status === Strophe.Status.ATTACHED) {
-            if (this.options.useStunTurn
-                || (this.options.p2p && this.options.p2p.useStunTurn)) {
-                this.connection.jingle.getStunAndTurnCredentials();
-            }
+        if (status === Strophe.Status.CONNECTED || status === Strophe.Status.ATTACHED) {
+            this.connection.jingle.getStunAndTurnCredentials();
 
             logger.info(`My Jabber ID: ${this.connection.jid}`);
 
@@ -748,6 +750,8 @@ export default class XMPP extends Listenable {
                     + 'structure', 'topic: ', type);
             }
         } catch (e) {
+            logger.error(e);
+
             return false;
         }
 
