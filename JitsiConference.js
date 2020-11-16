@@ -1303,6 +1303,7 @@ JitsiConference.prototype.selectParticipants = function(participantIds) {
     if (!Array.isArray(participantIds)) {
         throw new Error('Invalid argument; participantIds must be an array.');
     }
+    console.log("helloword");
 
     this.rtc.selectEndpoints(participantIds);
 };
