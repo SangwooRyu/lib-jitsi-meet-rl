@@ -69,7 +69,7 @@ const logger = getLogger(__filename);
  * {@link ACTION_JINGLE_SI_TIMEOUT} analytics event is sent (in ms).
  * @type {number}
  */
-const JINGLE_SI_TIMEOUT = 5000;
+const JINGLE_SI_TIMEOUT = 50000;
 
 /**
  * Creates a JitsiConference object with the given name and properties.
