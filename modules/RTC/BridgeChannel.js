@@ -229,7 +229,7 @@ export default class BridgeChannel {
     }
 
     /**
-     * Sends a "disable receiving video endpoints changed" message via the channel,
+     * Sends a "Receive video endpoints changed" message via the channel,
      * which disable receiving the videos of endpoints
      *
      * @param {Array<string>} endpointIds - The ids of the in viewport endpoints.
@@ -237,14 +237,14 @@ export default class BridgeChannel {
      * {@link https://developer.mozilla.org/docs/Web/API/RTCDataChannel/send})
      * or from WebSocket#send or Error with "No opened channel" message.
      */
-    sendDisableRecvVideoEndpointsMessage(endpointIds) {
+    sendRecvVideoEndpointsMessage(endpointIds) {
         logger.log(
-            'sending disable receiving video endpoints notification to the bridge',
+            'sending video endpoints to receive notification to the bridge',
             endpointIds);
 
         this._send({
-            colibriClass: 'DisableRecvVideoEndpointsChangedEvent',
-            disableRecvVideoEndpoints: endpointIds
+            colibriClass: 'RecvVideoEndpointsChangedEvent',
+            recvVideoEndpoints: endpointIds
         });
     }
 

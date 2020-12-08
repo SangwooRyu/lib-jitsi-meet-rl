@@ -1308,7 +1308,7 @@ JitsiConference.prototype.selectParticipants = function(participantIds) {
 };
 
 /*
- * Disable receiving video of remote endpoints. The argument
+ * Only receive video from these participants. The argument
  * should be an array of participant id strings or an empty array; an error will
  * be thrown if a non-array is passed in. The error is thrown as a layer of
  * protection against passing an invalid argument, as the error will happen in
@@ -1318,12 +1318,12 @@ JitsiConference.prototype.selectParticipants = function(participantIds) {
  * participants.
  * @returns {void}
  */
-JitsiConference.prototype.disableRecvVideoParticipants = function (participantIds) {
+JitsiConference.prototype.recvVideoParticipants = function (participantIds) {
     if (!Array.isArray(participantIds)) {
         throw new Error('Invalid argument; participantIds must be an array.');
     }
 
-    this.rtc.disableRecvVideoEndpoints(participantIds);
+    this.rtc.recvVideoEndpoints(participantIds);
 };
 
 /**

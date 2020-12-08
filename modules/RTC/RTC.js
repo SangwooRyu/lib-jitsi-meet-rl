@@ -193,7 +193,7 @@ export default class RTC extends Listenable {
          * @type {Array}
          * @private
          */
-        this._disableRecvVideoEndpoints = [];
+        this._recvVideoEndpoints = [];
 
         // The last N change listener.
         this._lastNChangeListener = this._onLastNChanged.bind(this);
@@ -303,8 +303,8 @@ export default class RTC extends Listenable {
                     this._pinnedEndpoint);
                 this._channel.sendSelectedEndpointsMessage(
                     this._selectedEndpoints);
-                this._channel.sendDisableRecvVideoEndpointsMessage(
-                    this._disableRecvVideoEndpoints);
+                this._channel.sendRecvVideoEndpointsMessage(
+                    this._recvVideoEndpoints);
 
                 if (typeof this._maxFrameHeight !== 'undefined') {
                     this._channel.sendReceiverVideoConstraintMessage(
@@ -444,8 +444,8 @@ export default class RTC extends Listenable {
     }
 
     /**
-     * Disable jvb to send remote endpoints videos.
-     *  If there is no channel we store it and send it
+     * Request jvb to only send these remote endpoints videos.
+     * If there is no channel we store it and send it
      * through the channel once it is created.
      *
      * @param {Array<string>} ids - The user ids.
@@ -453,12 +453,12 @@ export default class RTC extends Listenable {
      * fails.
      * @returns {void}
      */
-    disableRecvVideoEndpoints(ids) {
-        this._disableRecvVideoEndpoints = ids;
+    recvVideoEndpoints(ids) {
+        this._recvVideoEndpoints = ids;
 
         if (this._channel && this._channel.isOpen()) {
-            this._channel.sendDisableRecvVideoEndpointsMessage(ids);
-            this._disableRecvVideoEndpoints = []
+            this._channel.sendRecvVideoEndpointsMessage(ids);
+            this._recvVideoEndpoints = []
         }
     }
 
