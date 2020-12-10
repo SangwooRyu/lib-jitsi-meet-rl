@@ -1049,7 +1049,7 @@ export default class ChatRoom extends Listenable {
             let invite;
 
             if ($(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>status[code="104"]').length) {
-                this.discoRoomInfo();
+                !this.options.disableDiscoInfo && this.discoRoomInfo();
             } else if ((invite = $(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>invite'))
                         && invite.length) {
                 const passwordSelect = $(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>password');
