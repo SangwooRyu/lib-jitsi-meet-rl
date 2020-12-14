@@ -1438,7 +1438,13 @@ const getters = {
         return this.peerconnection.iceConnectionState;
     },
     localDescription() {
-        let desc = this.peerconnection.localDescription;
+        let desc = null;
+        
+        try {
+            desc = this.peerconnection.localDescription;
+        } catch(e) {
+            console.error(e);
+        }
 
         if (!desc) {
             logger.debug('getLocalDescription no localDescription found');
