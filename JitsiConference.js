@@ -61,7 +61,7 @@ import {
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
 import ParticipantLog from './modules/plog/plog'
-
+import ChatRoom from './modules/xmpp/ChatRoom';
 const logger = getLogger(__filename);
 
 /**
@@ -3550,4 +3550,15 @@ JitsiConference.prototype.getParticipantLogIdentity = function(){
 
 JitsiConference.prototype.getParticipantIdentityById = function(id){
     return this.participants[id]? this.participants[id].getIdentityId() : null;
+}
+
+/**
+ * Share a file into the conference meeting
+ * @param sharedFile the file to be shared in the conference
+ */
+JitsiConference.prototype.uploadSharedFile = function(sharedFile) {
+    console.log("I have reached lib-jitsi-meet");
+    if(this.room) {
+        this.room.uploadSharedFile(sharedFile);
+    }
 }

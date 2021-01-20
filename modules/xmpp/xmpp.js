@@ -147,6 +147,9 @@ export default class XMPP extends Listenable {
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
 
+        //add HTTP file upload feature to the XMPP server
+        this.caps.addFeature('urn:xmpp:http:upload:0');
+
         if (!this.options.disableRtx) {
             this.caps.addFeature('urn:ietf:rfc:4588');
         }
