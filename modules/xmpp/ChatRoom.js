@@ -1585,10 +1585,14 @@ export default class ChatRoom extends Listenable {
             mutedNode = filterNodeFromPresenceJSON(pres, 'audiomuted');
         } else if (mediaType === MediaType.VIDEO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'videomuted');
+            const codecTypeNode = filterNodeFromPresenceJSON(pres, 'jitsi_participant_codecType');
             const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoType');
 
             if (videoTypeNode.length > 0) {
                 data.videoType = videoTypeNode[0].value;
+            }
+            if (codecTypeNode.length > 0) {
+                data.codecType = codecTypeNode[0].value;
             }
         } else {
             logger.error(`Unsupported media type: ${mediaType}`);
