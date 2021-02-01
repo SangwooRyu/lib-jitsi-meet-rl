@@ -360,3 +360,13 @@ export const LOBBY_USER_UPDATED = 'conference.lobby.userUpdated';
  * A user left the lobby room.
  */
 export const LOBBY_USER_LEFT = 'conference.lobby.userLeft';
+
+/**
+ * A participant is disabled for chat by moderator.
+ */
+export const PARTICIPANT_CHAT_DISABLED = 'conference.participant_chatDisabled';
+
+/**
+ * A participant is enabled for chat by moderator.
+ */
+export const PARTICIPANT_CHAT_ENABLED = 'conference.participant_chatEnabled';

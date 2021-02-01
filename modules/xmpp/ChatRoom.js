@@ -1215,6 +1215,46 @@ export default class ChatRoom extends Listenable {
      *
      * @param jid
      */
+    disableChatForParticipant(jid) {
+        const disableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'visitor' })
+            .c('reason').t('You have been disabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            disableChatIQ,
+            result => logger.log('Disable chat for participant with jid: ', jid, result),
+            error => logger.log('Disable chat for participant error: ', error));
+    }
+
+    /* eslint-disable max-params */
+
+    /**
+     *
+     * @param jid
+     */
+    enableChatForParticipant(jid) {
+        const enableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'participant' })
+            .c('reason').t('You are now enabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            enableChatIQ,
+            result => logger.log('Chat enabled for participant with jid: ', jid, result),
+            error => logger.log('Chat enabled for participant error: ', error));
+    }
+
+    /* eslint-disable max-params */
+
+    /**
+     *
+     * @param jid
+     */
     kick(jid) {
         const kickIQ = $iq({ to: this.roomjid,
             type: 'set' })

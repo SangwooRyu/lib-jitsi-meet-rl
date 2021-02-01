@@ -1458,6 +1458,36 @@ JitsiConference.prototype.kickParticipant = function(id) {
 };
 
 /**
+ * Disable chat for participant from this conference.
+ * @param {string} id id of the participant to disable
+ */
+JitsiConference.prototype.disableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.disableChatForParticipant(participant.getJid());
+    // emit events from JitsiConferenceEvents so that it is reached to web/jitsi-meet
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, participant);
+};
+
+/**
+ * Enable chat for participant from this conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.enableChatForParticipant(participant.getJid());
+    // emit events from JitsiConferenceEvents so that it is reach to web/jitsi-meet
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, participant);
+};
+
+/**
  * Maybe clears the timeout which emits {@link ACTION_JINGLE_SI_TIMEOUT}
  * analytics event.
  * @private
