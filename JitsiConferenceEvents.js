@@ -370,3 +370,5 @@ export const PARTICIPANT_CHAT_DISABLED = 'conference.participant_chatDisabled';
  * A participant is enabled for chat by moderator.
  */
 export const PARTICIPANT_CHAT_ENABLED = 'conference.participant_chatEnabled';
+
+export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';

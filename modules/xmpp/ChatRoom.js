@@ -300,8 +300,6 @@ export default class ChatRoom extends Listenable {
                 to: this.roomjid
             })
                 .c('query', { xmlns: Strophe.NS.DISCO_INFO });
-        console.log("Get info object is: ", getInfo);
-        console.log("At line 305");
         //send the getInfo IQ tag we built above using the sendIQ helper function and its response is stored in result
         this.connection.sendIQ(getInfo, result => {
             const locked
@@ -543,13 +541,37 @@ export default class ChatRoom extends Listenable {
 
         if (from === this.myroomjid) {
             const newRole
-                = member.affiliation === 'owner' ? member.role : 'none';
-
+                = member.affiliation === 'owner' ? member.role : member.role; // ternary option was initially 'none';
             if (this.role !== newRole) {
                 this.role = newRole;
-                this.eventEmitter.emit(
-                    XMPPEvents.LOCAL_ROLE_CHANGED,
-                    this.role);
+                this.eventEmitter.emit(XMPPEvents.LOCAL_ROLE_CHANGED, this.role);
+
+                // emit an event to notify that the local participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(newRole === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // allowed to chat i.e. role changed to "participant"
+                if(newRole === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // granted moderator right i.e. role changed to "moderator"
+                if(newRole === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
             }
             if (!this.joined) {
                 this.joined = true;
@@ -615,6 +637,34 @@ export default class ChatRoom extends Listenable {
                 memberOfThis.role = member.role;
                 this.eventEmitter.emit(
                     XMPPEvents.MUC_ROLE_CHANGED, from, member.role);
+
+                // emit an event to notify that this remote participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(memberOfThis.role === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // allowed for chat i.e. role changed to "participant"
+                if(memberOfThis.role === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // granted moderator rights i.e. role changed to "moderator"
+                if(memberOfThis.role === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
+                // end of added portion
             }
 
             // affiliation changed
@@ -1247,6 +1297,34 @@ export default class ChatRoom extends Listenable {
             enableChatIQ,
             result => logger.log('Chat enabled for participant with jid: ', jid, result),
             error => logger.log('Chat enabled for participant error: ', error));
+    }
+
+    // current logic for enabling chat for all participants is:
+    // only those users who have "visitor" role will be changed to "participant" role
+    enableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to enable chat for participants who are "visitors" and thus grant them voice in the chatroom
+            if(this.members[participant].role === "visitor") {
+                this.enableChatForParticipant(participant);
+            }
+        }); 
+    }
+
+    // current logic for disabling chat for all participants is:
+    // only those users who have "participant" role will be changed to "visitor" role
+    // users with "moderator" roles are left as it is
+    disableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+        console.log("JID of members of this room are: ", allparticipantJIDs);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to disable "participants" who have voice except the "moderators"
+            if(this.members[participant].role === "participant") {
+                this.disableChatForParticipant(participant);
+            }
+        });
     }
 
     /* eslint-disable max-params */

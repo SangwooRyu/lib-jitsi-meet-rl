@@ -1468,8 +1468,6 @@ JitsiConference.prototype.disableChatForParticipant = function(id) {
         return;
     }
     this.room.disableChatForParticipant(participant.getJid());
-    // emit events from JitsiConferenceEvents so that it is reached to web/jitsi-meet
-    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, participant);
 };
 
 /**
@@ -1483,9 +1481,19 @@ JitsiConference.prototype.enableChatForParticipant = function(id) {
         return;
     }
     this.room.enableChatForParticipant(participant.getJid());
-    // emit events from JitsiConferenceEvents so that it is reach to web/jitsi-meet
-    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, participant);
 };
+
+/**
+ * Enable chat for all participants from the conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForAll = function() {
+    this.room.enableChatForAll();
+};
+
+JitsiConference.prototype.disableChatForAll = function() {
+    this.room.disableChatForAll();
+}
 
 /**
  * Maybe clears the timeout which emits {@link ACTION_JINGLE_SI_TIMEOUT}
@@ -1688,12 +1696,25 @@ JitsiConference.prototype.onMemberKicked = function(isSelfPresence, actorId, kic
 
         return;
     }
-
     const kickedParticipant = this.participants[kickedParticipantId];
 
     this.eventEmitter.emit(
         JitsiConferenceEvents.PARTICIPANT_KICKED, actorParticipant, kickedParticipant);
 };
+
+// this function is for notifying the affected user that they were disabled for chat by broadcasting an event 
+JitsiConference.prototype.onParticipantChatDisabled = function(disabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, disabledParticipantID);
+}
+
+JitsiConference.prototype.onParticipantChatEnabled = function(enabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, enabledParticipantID);
+}
+
+JitsiConference.prototype.onModeratorRoleGranted = function(participantId) {
+    this.eventEmitter.emit(JitsiConferenceEvents.MODERATOR_ROLE_GRANTED, participantId);
+}
+// end of added portion
 
 /**
  * Method called on local MUC role change.
