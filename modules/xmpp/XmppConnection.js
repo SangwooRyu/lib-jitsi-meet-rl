@@ -115,6 +115,7 @@ export default class XmppConnection extends Listenable {
      * @returns {Strophe.Connection.disco}
      */
     get disco() {
+        console.log("Strophe object is: ", this._stropheConn);
         return this._stropheConn.disco;
     }
 

@@ -196,6 +196,9 @@ export default class XMPP extends Listenable {
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
 
+        //add HTTP file upload feature to the XMPP server
+        this.caps.addFeature('urn:xmpp:http:upload:0');
+
         // Disable RTX on Firefox 83 and older versions because of
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1668028
         if (!(this.options.disableRtx || (browser.isFirefox() && browser.isVersionLessThan(84)))) {

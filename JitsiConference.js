@@ -67,7 +67,7 @@ import {
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
 import ParticipantLog from './modules/plog/plog'
-
+import ChatRoom from './modules/xmpp/ChatRoom';
 const logger = getLogger(__filename);
 
 /**
@@ -1490,6 +1490,44 @@ JitsiConference.prototype.kickParticipant = function(id) {
 };
 
 /**
+ * Disable chat for participant from this conference.
+ * @param {string} id id of the participant to disable
+ */
+JitsiConference.prototype.disableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.disableChatForParticipant(participant.getJid());
+};
+
+/**
+ * Enable chat for participant from this conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.enableChatForParticipant(participant.getJid());
+};
+
+/**
+ * Enable chat for all participants from the conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForAll = function() {
+    this.room.enableChatForAll();
+};
+
+JitsiConference.prototype.disableChatForAll = function() {
+    this.room.disableChatForAll();
+}
+
+/**
  * Maybe clears the timeout which emits {@link ACTION_JINGLE_SI_TIMEOUT}
  * analytics event.
  * @private
@@ -1709,12 +1747,25 @@ JitsiConference.prototype.onMemberKicked = function(isSelfPresence, actorId, kic
 
         return;
     }
-
     const kickedParticipant = this.participants[kickedParticipantId];
 
     this.eventEmitter.emit(
         JitsiConferenceEvents.PARTICIPANT_KICKED, actorParticipant, kickedParticipant);
 };
+
+// this function is for notifying the affected user that they were disabled for chat by broadcasting an event 
+JitsiConference.prototype.onParticipantChatDisabled = function(disabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, disabledParticipantID);
+}
+
+JitsiConference.prototype.onParticipantChatEnabled = function(enabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, enabledParticipantID);
+}
+
+JitsiConference.prototype.onModeratorRoleGranted = function(participantId) {
+    this.eventEmitter.emit(JitsiConferenceEvents.MODERATOR_ROLE_GRANTED, participantId);
+}
+// end of added portion
 
 /**
  * Method called on local MUC role change.
@@ -3601,4 +3652,15 @@ JitsiConference.prototype.getParticipantLogIdentity = function(){
 
 JitsiConference.prototype.getParticipantIdentityById = function(id){
     return this.participants[id]? this.participants[id].getIdentityId() : null;
+}
+
+/**
+ * Share a file into the conference meeting
+ * @param sharedFile the file to be shared in the conference
+ */
+JitsiConference.prototype.uploadSharedFile = function(sharedFile) {
+    console.log("I have reached lib-jitsi-meet");
+    if(this.room) {
+        this.room.uploadSharedFile(sharedFile);
+    }
 }

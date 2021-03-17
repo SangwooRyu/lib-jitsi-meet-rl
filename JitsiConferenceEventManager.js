@@ -272,6 +272,16 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
 
     chatRoom.addListener(XMPPEvents.KICKED,
         conference.onMemberKicked.bind(conference));
+    
+    chatRoom.addListener(XMPPEvents.PARTICIPANT_CHAT_DISABLED,
+        conference.onParticipantChatDisabled.bind(conference));
+
+    chatRoom.addListener(XMPPEvents.PARTICIPANT_CHAT_ENABLED,
+        conference.onParticipantChatEnabled.bind(conference));
+    
+    chatRoom.addListener(XMPPEvents.MODERATOR_ROLE_GRANTED,
+        conference.onModeratorRoleGranted.bind(conference));
+
     chatRoom.addListener(XMPPEvents.SUSPEND_DETECTED,
         conference.onSuspendDetected.bind(conference));
 

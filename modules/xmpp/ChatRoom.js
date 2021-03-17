@@ -13,7 +13,7 @@ import Listenable from '../util/Listenable';
 import Lobby from './Lobby';
 import XmppConnection from './XmppConnection';
 import Moderator from './moderator';
-
+import RandomUtil from '../util/RandomUtil';
 const logger = getLogger(__filename);
 
 export const parser = {
@@ -68,7 +68,6 @@ export const parser = {
  */
 function filterNodeFromPresenceJSON(pres, nodeName) {
     const res = [];
-
     for (let i = 0; i < pres.length; i++) {
         if (pres[i].tagName === nodeName) {
             res.push(pres[i]);
@@ -293,13 +292,13 @@ export default class ChatRoom extends Listenable {
                 to: this.roomjid
             })
                 .c('query', { xmlns: Strophe.NS.DISCO_INFO });
-
+        //send the getInfo IQ tag we built above using the sendIQ helper function and its response is stored in result
         this.connection.sendIQ(getInfo, result => {
             const locked
                 = $(result).find('>query>feature[var="muc_passwordprotected"]')
                     .length
                     === 1;
-
+            console.log("Result is: ", result);
             if (locked !== this.locked) {
                 this.eventEmitter.emit(XMPPEvents.MUC_LOCK_CHANGED, locked);
                 this.locked = locked;
@@ -538,13 +537,37 @@ export default class ChatRoom extends Listenable {
 
         if (from === this.myroomjid) {
             const newRole
-                = member.affiliation === 'owner' ? member.role : 'none';
-
+                = member.affiliation === 'owner' ? member.role : member.role; // ternary option was initially 'none';
             if (this.role !== newRole) {
                 this.role = newRole;
-                this.eventEmitter.emit(
-                    XMPPEvents.LOCAL_ROLE_CHANGED,
-                    this.role);
+                this.eventEmitter.emit(XMPPEvents.LOCAL_ROLE_CHANGED, this.role);
+
+                // emit an event to notify that the local participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(newRole === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // allowed to chat i.e. role changed to "participant"
+                if(newRole === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // granted moderator right i.e. role changed to "moderator"
+                if(newRole === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
             }
             if (!this.joined) {
                 this.joined = true;
@@ -611,6 +634,34 @@ export default class ChatRoom extends Listenable {
                 memberOfThis.role = member.role;
                 this.eventEmitter.emit(
                     XMPPEvents.MUC_ROLE_CHANGED, from, member.role);
+
+                // emit an event to notify that this remote participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(memberOfThis.role === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // allowed for chat i.e. role changed to "participant"
+                if(memberOfThis.role === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // granted moderator rights i.e. role changed to "moderator"
+                if(memberOfThis.role === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
+                // end of added portion
             }
 
             // affiliation changed
@@ -834,6 +885,47 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
+     * Query if upload service is available
+     * 
+     */
+    isUploadServiceAvailable() {
+        const iqquery = $iq({ 
+            from: this.meetingId,
+            to: 'upload.vmeeting1.postech.ac.kr',
+            type: 'get',
+            id: RandomUtil.randomHexString(8).toLowerCase()
+        });
+        iqquery.c('query', { 'xmlns': Strophe.NS.DISCO_INFO});
+        this.connection.sendIQ(iqquery, result => {
+            console.log("Result of service discovery is: ", result);
+        });
+    }
+
+    requestAFileSlot(name, size) {
+        const iqquery = $iq({
+            from: this.meetingId,
+            to: 'upload.vmeeting1.postech.ac.kr',
+            type: 'get',
+            id: RandomUtil.randomHexString(8).toLowerCase()
+        });
+        iqquery.c('request', { xmlns: 'urn:xmpp:http:upload:0', filename: name, size: size});
+        this.connection.sendIQ(iqquery, result => {
+            console.log("Result of slot request is: ", result);
+        });
+
+    }
+
+    /**
+     * Uploading the file selected from the user in a chatroom to XMPP server
+     * @param {File} sharedFile 
+     */
+    uploadSharedFile(sharedFile) {
+        console.log("This function will upload the file shared by user: ", sharedFile);
+        this.isUploadServiceAvailable();
+        this.requestAFileSlot(sharedFile.name, sharedFile.size);
+    }
+    
+    /**
      * Send text message to the other participants in the conference
      * @param message
      * @param elementName
@@ -842,7 +934,6 @@ export default class ChatRoom extends Listenable {
     sendMessage(message, elementName, nickname) {
         const msg = $msg({ to: this.roomjid,
             type: 'groupchat' });
-
         // We are adding the message in a packet extension. If this element
         // is different from 'body', we add a custom namespace.
         // e.g. for 'json-message' extension of message stanza.
@@ -1210,6 +1301,74 @@ export default class ChatRoom extends Listenable {
             result => logger.log('Set affiliation of participant with jid: ', jid, 'to', affiliation, result),
             error => logger.log('Set affiliation of participant error: ', error));
     }
+
+    /**
+     *
+     * @param jid
+     */
+    disableChatForParticipant(jid) {
+        const disableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'visitor' })
+            .c('reason').t('You have been disabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            disableChatIQ,
+            result => logger.log('Disable chat for participant with jid: ', jid, result),
+            error => logger.log('Disable chat for participant error: ', error));
+    }
+
+    /* eslint-disable max-params */
+
+    /**
+     *
+     * @param jid
+     */
+    enableChatForParticipant(jid) {
+        const enableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'participant' })
+            .c('reason').t('You are now enabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            enableChatIQ,
+            result => logger.log('Chat enabled for participant with jid: ', jid, result),
+            error => logger.log('Chat enabled for participant error: ', error));
+    }
+
+    // current logic for enabling chat for all participants is:
+    // only those users who have "visitor" role will be changed to "participant" role
+    enableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to enable chat for participants who are "visitors" and thus grant them voice in the chatroom
+            if(this.members[participant].role === "visitor") {
+                this.enableChatForParticipant(participant);
+            }
+        }); 
+    }
+
+    // current logic for disabling chat for all participants is:
+    // only those users who have "participant" role will be changed to "visitor" role
+    // users with "moderator" roles are left as it is
+    disableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+        console.log("JID of members of this room are: ", allparticipantJIDs);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to disable "participants" who have voice except the "moderators"
+            if(this.members[participant].role === "participant") {
+                this.disableChatForParticipant(participant);
+            }
+        });
+    }
+
+    /* eslint-disable max-params */
 
     /**
      *
