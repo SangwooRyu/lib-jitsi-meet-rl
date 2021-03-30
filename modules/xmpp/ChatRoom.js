@@ -313,6 +313,16 @@ export default class ChatRoom extends Listenable {
                 logger.warn('No meeting ID from backend');
             }
 
+            const timeRemained
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');
+
+            if (timeRemained.length) {
+                const secTimeRemained = parseInt(timeRemained.text(), 10);
+                this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
+            } else {
+                logger.warn('No time remained from backend');
+            }
+
             const membersOnly = $(result).find('>query>feature[var="muc_membersonly"]').length === 1;
 
             const lobbyRoomField
@@ -1154,6 +1164,17 @@ export default class ChatRoom extends Listenable {
             if (subjectText || subjectText === '') {
                 this.eventEmitter.emit(XMPPEvents.SUBJECT_CHANGED, subjectText);
                 logger.log(`Subject is changed to ${subjectText}`);
+            }
+        }
+
+        const timeremained = $(msg).find('>timeremained');
+        if (timeremained.length) {
+            try {
+                const secTimeRemained = parseInt(timeremained.text(), 10);
+                this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
+                logger.log(`Conference will terminate after ${secTimeRemained} seconds`);
+            } catch(err) {
+                console.error(err);
             }
         }
 

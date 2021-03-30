@@ -372,3 +372,5 @@ export const PARTICIPANT_CHAT_DISABLED = 'conference.participant_chatDisabled';
 export const PARTICIPANT_CHAT_ENABLED = 'conference.participant_chatEnabled';
 
 export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';
+
+export const TIME_REMAINED = 'conference.time_remained';

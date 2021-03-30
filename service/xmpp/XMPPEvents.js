@@ -303,7 +303,9 @@ const XMPPEvents = {
 
     PARTICIPANT_CHAT_ENABLED: 'xmpp.participant_chat_enabled',
 
-    MODERATOR_ROLE_GRANTED: 'xmpp.moderator_role_granted'
+    MODERATOR_ROLE_GRANTED: 'xmpp.moderator_role_granted',
+
+    TIME_REMAINED: 'xmpp.time_remained'
 };
 
 module.exports = XMPPEvents;
