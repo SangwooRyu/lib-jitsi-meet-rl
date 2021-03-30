@@ -88,7 +88,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
 
 
     chatRoom.addListener(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
-        actor => {
+        (actor, mute) => {
             // TODO: Add a way to differentiate between commands which caused
             // us to mute and those that did not change our state (i.e. we were
             // already muted).
@@ -97,7 +97,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
             conference.mutedByFocusActor = actor;
 
             // set isMutedByFocus when setAudioMute Promise ends
-            conference.rtc.setAudioMute(true).then(
+            conference.rtc.setAudioMute(mute).then(
                 () => {
                     conference.isMutedByFocus = true;
                     conference.mutedByFocusActor = null;
