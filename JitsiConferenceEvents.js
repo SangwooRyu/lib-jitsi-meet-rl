@@ -374,3 +374,7 @@ export const PARTICIPANT_CHAT_ENABLED = 'conference.participant_chatEnabled';
 export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';
 
 export const TIME_REMAINED = 'conference.time_remained';
+
+export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
+
+export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';

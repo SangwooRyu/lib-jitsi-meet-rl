@@ -305,7 +305,9 @@ const XMPPEvents = {
 
     MODERATOR_ROLE_GRANTED: 'xmpp.moderator_role_granted',
 
-    TIME_REMAINED: 'xmpp.time_remained'
+    TIME_REMAINED: 'xmpp.time_remained',
+
+    VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus'
 };
 
 module.exports = XMPPEvents;
