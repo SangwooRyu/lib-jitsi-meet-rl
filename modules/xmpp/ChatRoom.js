@@ -1868,7 +1868,7 @@ export default class ChatRoom extends Listenable {
      */
     muteParticipant(jid, mute) {
         logger.info('set mute', mute);
-        const iqToFocus = $iq(
+        const iqToJid = $iq(
             { to: jid,
                 type: 'set' })
             .c('mute', {
@@ -1879,7 +1879,76 @@ export default class ChatRoom extends Listenable {
             .up();
 
         this.connection.sendIQ(
-            iqToFocus,
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Mutes remote participant video.
+     * @param jid of the participant
+     * @param mute
+     */
+     muteParticipantVideo(jid, mute) {
+        logger.info('set mute video', mute);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('mutevideo', {
+                xmlns: 'http://jitsi.org/jitmeet/video',
+                jid
+            })
+            .t(mute.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Ack for muting remote participant.
+     * @param jid of the participant
+     * @param ack
+     */
+    ackMuteParticipant(jid, ack) {
+        logger.info('ack mute', ack);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('ackmute', {
+                xmlns: 'http://jitsi.org/jitmeet/audio',
+                jid
+            })
+            .t(ack.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Ack for muting remote participant video.
+     * @param jid of the participant
+     * @param ack
+     */
+    ackMuteParticipantVideo(jid, ack) {
+        logger.info('ack mute video', ack);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('ackmutevideo', {
+                xmlns: 'http://jitsi.org/jitmeet/video',
+                jid
+            })
+            .t(ack.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
             result => logger.log('set mute', result),
             error => logger.log('set mute error', error));
     }
@@ -1909,6 +1978,60 @@ export default class ChatRoom extends Listenable {
             // namespace?
             logger.warn('Ignoring a mute request which does not explicitly '
                 + 'specify a positive mute command.');
+        }
+
+        const ackMute = $(iq).find('ackmute');
+        if (ackMute.length) {
+            const nick = Strophe.getResourceFromJid(from);
+            this.eventEmitter.emit(
+                XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
+                nick,
+                ackMute.text() === 'true'
+            );
+        } else {
+            logger.warn('Ignoring a ack mute request which does not explicitly '
+                + 'specify a positive ackmute command.');
+        }
+    }
+
+    /**
+     * TODO: Document
+     * @param iq
+     */
+    onMuteVideo(iq) {
+        const from = iq.getAttribute('from');
+
+        // if (from !== this.focusMucJid) {
+        //     logger.warn('Ignored mute from non focus peer');
+
+        //     return;
+        // }
+        const mute = $(iq).find('mutevideo');
+
+        if (mute.length) {
+            this.eventEmitter.emit(
+                XMPPEvents.VIDEO_MUTED_BY_FOCUS,
+                from,
+                mute.text() === 'true');
+        } else {
+            // XXX Why do we support anything but muting? Why do we encode the
+            // value in the text of the element? Why do we use a separate XML
+            // namespace?
+            logger.warn('Ignoring a mute video request which does not explicitly '
+                + 'specify a positive mute command.');
+        }
+
+        const ackMute = $(iq).find('ackmutevideo');
+        if (ackMute.length) {
+            const nick = Strophe.getResourceFromJid(from);
+            this.eventEmitter.emit(
+                XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
+                nick,
+                ackMute.text() === 'true'
+            );
+        } else {
+            logger.warn('Ignoring a ack mute request which does not explicitly '
+                + 'specify a positive ackmute command.');
         }
     }
 

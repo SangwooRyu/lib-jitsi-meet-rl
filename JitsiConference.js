@@ -1565,28 +1565,53 @@ JitsiConference.prototype._maybeSetSITimeout = function() {
 /**
  * Mutes a participant.
  * @param {string} id The id of the participant to mute.
+ * @param {Boolean} mute whether mute or unmute
  */
-JitsiConference.prototype.muteParticipant = function(id) {
+JitsiConference.prototype.muteParticipant = function(id, mute) {
     const participant = this.getParticipantById(id);
 
     if (!participant) {
         return;
     }
-    this.room.muteParticipant(participant.getJid(), true);
+    this.room.muteParticipant(participant.getJid(), mute);
 };
 
 /**
- * Toggle mutes a participant.
- * @param {string} id The id of the participant to toggle.
+ * Mutes a participant video.
+ * @param {string} id The id of the participant to mute.
+ * @param {Boolean} mute whether mute or unmute
  */
-JitsiConference.prototype.toggleMuteParticipant = function(id) {
+JitsiConference.prototype.muteParticipantVideo = function(id, mute) {
     const participant = this.getParticipantById(id);
 
     if (!participant) {
         return;
     }
+    this.room.muteParticipantVideo(participant.getJid(), mute);
+};
 
-    this.room.muteParticipant(participant.getJid(), !participant.isAudioMuted());
+/**
+ * ack mutes a participant.
+ * @param {string} id The id of the participant to toggle.
+ */
+JitsiConference.prototype.ackMuteParticipant = function(jid, ack) {
+    if (!jid) {
+        return;
+    }
+
+    this.room.ackMuteParticipant(jid, ack);
+};
+
+/**
+ * ack mutes a participant.
+ * @param {string} id The id of the participant to toggle.
+ */
+JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
+    if (!jid) {
+        return;
+    }
+
+    this.room.ackMuteParticipantVideo(jid, ack);
 };
 
 /* eslint-disable max-params */

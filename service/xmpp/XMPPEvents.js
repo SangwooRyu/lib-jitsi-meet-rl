@@ -307,7 +307,11 @@ const XMPPEvents = {
 
     TIME_REMAINED: 'xmpp.time_remained',
 
-    VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus'
+    VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus',
+
+    ACK_AUDIO_MUTED_BY_FOCUS: 'xmpp.ack_audio_muted_by_focus',
+
+    ACK_VIDEO_MUTED_BY_FOCUS: 'xmpp.ack_video_muted_by_focus'
 };
 
 module.exports = XMPPEvents;

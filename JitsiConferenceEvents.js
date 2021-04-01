@@ -378,3 +378,7 @@ export const TIME_REMAINED = 'conference.time_remained';
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';
+
+export const ACK_AUDIO_MUTED_BY_FOCUS = 'conference.ack_audio_muted_by_focus';
+
+export const ACK_VIDEO_MUTED_BY_FOCUS = 'conference.ack_video_muted_by_focus';
