@@ -882,7 +882,6 @@ JitsiConference.prototype.sendCommand = function(name, values) {
     } else {
         logger.warn('Not sending a command, room not initialized.');
     }
-
 };
 
 /**
@@ -1461,6 +1460,16 @@ JitsiConference.prototype.getParticipantCount
  */
 JitsiConference.prototype.getParticipantById = function(id) {
     return this.participants[id];
+};
+
+/**
+ * @returns {JitsiParticipant} the participant in this conference with the
+ * specified statsID (or undefined if there isn't one).
+ * @param statsID the id of the participant.
+ */
+JitsiConference.prototype.getParticipantByStatsID = function(statsID) {
+    const participants = this.getParticipants();
+    return participants.find(p => p._statsID === statsID);
 };
 
 /**
