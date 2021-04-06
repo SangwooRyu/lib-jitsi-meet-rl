@@ -623,7 +623,7 @@ export default class ChatRoom extends Listenable {
                     from,
                     member.nick,
                     member.role,
-                    this._isHidden(member),
+                    member.isHiddenDomain,
                     member.statsID,
                     member.status,
                     member.identity,
@@ -850,10 +850,6 @@ export default class ChatRoom extends Listenable {
     _initFocus(from, features) {
         this.focusMucJid = from;
         this.focusFeatures = features;
-    }
-
-    _isHidden(member) {
-        return member.isHiddenDomain || this.options[member.statsID];
     }
 
     /**
