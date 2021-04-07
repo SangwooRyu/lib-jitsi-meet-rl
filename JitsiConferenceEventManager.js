@@ -108,6 +108,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.MUC_JOINED,
         JitsiConferenceEvents.CONFERENCE_JOINED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.NOTICE_MESSAGE,
+        JitsiConferenceEvents.NOTICE_MESSAGE);
+    
     // send some analytics events
     chatRoom.addListener(XMPPEvents.MUC_JOINED,
         () => {

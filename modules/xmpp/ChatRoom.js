@@ -1178,6 +1178,16 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        const noticeMessage = $(msg).find('>notice');
+        if (noticeMessage.length) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTICE_MESSAGE, noticeMessage.text());
+                logger.log(`Conference received notice message: ${noticeMessage.text()}`);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // xep-0203 delay
         let stamp = $(msg).find('>delay').attr('stamp');
 
