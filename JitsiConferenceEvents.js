@@ -375,6 +375,8 @@ export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';
 
 export const TIME_REMAINED = 'conference.time_remained';
 
+export const USER_DEVICE_ACCESS_DISABLED = 'conference.user_device_access_disabled';
+
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';

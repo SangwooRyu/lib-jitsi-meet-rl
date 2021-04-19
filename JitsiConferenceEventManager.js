@@ -99,11 +99,16 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
         JitsiConferenceEvents.ACK_VIDEO_MUTED_BY_FOCUS);
 
-    this.chatRoomForwarder.forward(XMPPEvents.SUBJECT_CHANGED,
-        JitsiConferenceEvents.SUBJECT_CHANGED);
+    // this.chatRoomForwarder.forward(XMPPEvents.SUBJECT_CHANGED,
+    //     JitsiConferenceEvents.SUBJECT_CHANGED);
 
     this.chatRoomForwarder.forward(XMPPEvents.TIME_REMAINED,
         JitsiConferenceEvents.TIME_REMAINED);
+
+    // start of added portion
+    this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
+        JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
+    // end of added portion
 
     this.chatRoomForwarder.forward(XMPPEvents.MUC_JOINED,
         JitsiConferenceEvents.CONFERENCE_JOINED);

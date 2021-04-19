@@ -1499,6 +1499,30 @@ JitsiConference.prototype.kickParticipant = function(id) {
 };
 
 /**
+ * Disable user access for device
+ * @param {boolean} userDeviceAccessDisabled boolean flag suggesting whether or not to disable user's devices 
+ */
+JitsiConference.prototype.setUserDeviceAccessDisabled = function(userDeviceAccessDisabled) {
+    console.log("Reached JitsiConference. param is: ", userDeviceAccessDisabled);
+    console.log("Should now call ChatRoom->setUserDeviceAccessDisabled");
+    this.room.setUserDeviceAccessDisabled(userDeviceAccessDisabled);
+
+}
+
+JitsiConference.prototype.sendUserDeviceAccessConfiguration = function(userDeviceAccessDisabled) {
+    console.log("Inside sendUserDeviceAccessConfiguration");
+    
+    // call the sendMessage function from ChatRoom with element name userdeviceaccessdisabled
+    if(userDeviceAccessDisabled) {
+        this.room.sendMessage("true", 'userdeviceaccessdisabled');
+    } else {
+        this.room.sendMessage("false", 'userdeviceaccessdisabled');
+    }
+    
+}
+
+
+/**
  * Disable chat for participant from this conference.
  * @param {string} id id of the participant to disable
  */

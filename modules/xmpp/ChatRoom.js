@@ -298,7 +298,7 @@ export default class ChatRoom extends Listenable {
                 = $(result).find('>query>feature[var="muc_passwordprotected"]')
                     .length
                     === 1;
-            console.log("Result is: ", result);
+
             if (locked !== this.locked) {
                 this.eventEmitter.emit(XMPPEvents.MUC_LOCK_CHANGED, locked);
                 this.locked = locked;
@@ -322,6 +322,17 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No time remained from backend');
             }
+
+            const userDeviceAccessDisabledStr
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userdeviceaccessdisabled"]>value');
+
+            // convert userDeviceAccessDisabledStr to boolean
+            const userDeviceAccessDisabledFlag = (userDeviceAccessDisabledStr.text() === "true");
+
+            // emit XMPPEvents to mute device access disabled
+            console.log("userDeviceAccessDisabledFlag is: ", userDeviceAccessDisabledFlag);
+            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+        
 
             const membersOnly = $(result).find('>query>feature[var="muc_membersonly"]').length === 1;
 
@@ -1182,6 +1193,20 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        // start of added portion
+        // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
+        let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
+        
+        // convert the string to boolean value
+        let userDeviceAccessFlag = (userDeviceAccessStr === "true");
+        
+        // emit XMPP event to broadcast the value to all participants
+        this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        // end of added portion
+
+        //make a call to xmpp.js to send the message to prosody
+        console.log("This room jid is: ", this.roomjid);
+
         // xep-0203 delay
         let stamp = $(msg).find('>delay').attr('stamp');
 
@@ -1326,6 +1351,16 @@ export default class ChatRoom extends Listenable {
             result => logger.log('Set affiliation of participant with jid: ', jid, 'to', affiliation, result),
             error => logger.log('Set affiliation of participant error: ', error));
     }
+
+    /**
+     * 
+     * @param {boolean} userDeviceAccessDisabled 
+     */
+     setUserDeviceAccessDisabled(userDeviceAccessDisabled) {
+        logger.info("I have reached lib-jitsi-meet/ChatRoom.js");
+        console.log("UserDeviceAccessDisabled is: ", userDeviceAccessDisabled);
+        this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabled);
+     }
 
     /**
      *
