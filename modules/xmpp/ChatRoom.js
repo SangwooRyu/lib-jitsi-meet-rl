@@ -896,6 +896,31 @@ export default class ChatRoom extends Listenable {
     }
     /* eslint-enable max-params */
 
+        /**
+     * Send text message to the other participants in the conference
+     * @param message
+     * @param elementName
+     * @param nickname
+     */
+    sendHangupMessage(message, elementName, nickname) {
+        const msg = $msg({ to: this.roomjid,
+            type: 'groupchat' });
+
+        // We are adding the message in a packet extension. If this element
+        // is different from 'body', we add a custom namespace.
+        // e.g. for 'json-message' extension of message stanza.
+
+        msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message);
+        if (nickname) {
+            msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })
+                .t(nickname)
+                .up()
+                .up();
+        }
+        this.connection.send(msg);
+        this.eventEmitter.emit(XMPPEvents.SENDING_CHAT_MESSAGE, message);
+    }
+
     /**
      *
      * @param subject
@@ -1110,6 +1135,13 @@ export default class ChatRoom extends Listenable {
             // delivered after a delay, i.e. stamp is undefined.
             // e.g. - subtitles should not be displayed if delayed.
             if (parsedJson && stamp === undefined) {
+                if(parsedJson.type === 'hangup_all'){
+                    this.eventEmitter.emit(XMPPEvents.HANGUP_ALL_MESSAGE_RECEIVED,
+                        from, parsedJson);
+
+                    return;
+                }
+
                 this.eventEmitter.emit(XMPPEvents.JSON_MESSAGE_RECEIVED,
                     from, parsedJson);
 

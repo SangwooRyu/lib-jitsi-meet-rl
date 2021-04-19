@@ -297,7 +297,9 @@ const XMPPEvents = {
      * Event which is emitted when the body in an XMPP message in the MUC
      * contains JSON
      */
-    JSON_MESSAGE_RECEIVED: 'xmmp.json_message_received'
+    JSON_MESSAGE_RECEIVED: 'xmmp.json_message_received',
+
+    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received'
 };
 
 module.exports = XMPPEvents;
