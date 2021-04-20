@@ -324,7 +324,7 @@ export default class ChatRoom extends Listenable {
             }
 
             const userDeviceAccessDisabledStr
-                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userdeviceaccessdisabled"]>value');
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userDeviceAccessDisabled"]>value');
 
             // convert userDeviceAccessDisabledStr to boolean
             const userDeviceAccessDisabledFlag = (userDeviceAccessDisabledStr.text() === "true");
@@ -1196,16 +1196,12 @@ export default class ChatRoom extends Listenable {
         // start of added portion
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
-        
         // convert the string to boolean value
         let userDeviceAccessFlag = (userDeviceAccessStr === "true");
-        
         // emit XMPP event to broadcast the value to all participants
         this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
         // end of added portion
 
-        //make a call to xmpp.js to send the message to prosody
-        console.log("This room jid is: ", this.roomjid);
 
         // xep-0203 delay
         let stamp = $(msg).find('>delay').attr('stamp');
@@ -1352,15 +1348,6 @@ export default class ChatRoom extends Listenable {
             error => logger.log('Set affiliation of participant error: ', error));
     }
 
-    /**
-     * 
-     * @param {boolean} userDeviceAccessDisabled 
-     */
-     setUserDeviceAccessDisabled(userDeviceAccessDisabled) {
-        logger.info("I have reached lib-jitsi-meet/ChatRoom.js");
-        console.log("UserDeviceAccessDisabled is: ", userDeviceAccessDisabled);
-        this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabled);
-     }
 
     /**
      *
