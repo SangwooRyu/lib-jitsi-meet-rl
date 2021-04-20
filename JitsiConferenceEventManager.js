@@ -390,8 +390,6 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
         (from, payload) => {
             const id = Strophe.getResourceFromJid(from);
 
-            console.log(id);
-
             conference.eventEmitter.emit(
                 JitsiConferenceEvents.HANGUP_ALL_MESSAGE_RECEIVED,
                 id, payload);
