@@ -330,11 +330,14 @@ export default class ChatRoom extends Listenable {
             // convert userDeviceAccessDisabledStr to boolean
             let userDeviceAccessDisabledFlag; 
             
+            // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
             if(userDeviceAccessDisabledStr.text() === "true") {
                 userDeviceAccessDisabledFlag = true;
+                // emit XMPP event to broadcast the value to all participants
                 this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
             } else if(userDeviceAccessDisabledStr.text() === "false") {
                 userDeviceAccessDisabledFlag = false;
+                // emit XMPP event to broadcast the value to all participants
                 this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
             }
         
