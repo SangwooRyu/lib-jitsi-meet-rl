@@ -325,13 +325,18 @@ export default class ChatRoom extends Listenable {
 
             const userDeviceAccessDisabledStr
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userDeviceAccessDisabled"]>value');
+            console.log("UserDeviceAccessDisabledStr is: ", userDeviceAccessDisabledStr);
 
             // convert userDeviceAccessDisabledStr to boolean
-            const userDeviceAccessDisabledFlag = (userDeviceAccessDisabledStr.text() === "true");
-
-            // emit XMPPEvents to mute device access disabled
-            console.log("userDeviceAccessDisabledFlag is: ", userDeviceAccessDisabledFlag);
-            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+            let userDeviceAccessDisabledFlag; 
+            
+            if(userDeviceAccessDisabledStr.text() === "true") {
+                userDeviceAccessDisabledFlag = true;
+                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+            } else if(userDeviceAccessDisabledStr.text() === "false") {
+                userDeviceAccessDisabledFlag = false;
+                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+            }
         
 
             const membersOnly = $(result).find('>query>feature[var="muc_membersonly"]').length === 1;
@@ -1196,10 +1201,20 @@ export default class ChatRoom extends Listenable {
         // start of added portion
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
-        // convert the string to boolean value
-        let userDeviceAccessFlag = (userDeviceAccessStr === "true");
-        // emit XMPP event to broadcast the value to all participants
-        this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        
+        let userDeviceAccessFlag;
+
+        // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
+        if(userDeviceAccessStr === "true") {
+            userDeviceAccessFlag = true;
+            // emit XMPP event to broadcast the value to all participants
+            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        } else if(userDeviceAccessStr == "false") {
+            userDeviceAccessFlag = false;
+            // emit XMPP event to broadcast the value to all participants
+            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        }
+        
         // end of added portion
 
 
