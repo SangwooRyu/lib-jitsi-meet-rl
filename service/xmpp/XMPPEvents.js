@@ -313,7 +313,10 @@ const XMPPEvents = {
 
     ACK_VIDEO_MUTED_BY_FOCUS: 'xmpp.ack_video_muted_by_focus',
 
-    NOTICE_MESSAGE: 'xmpp.notice_message'
+    NOTICE_MESSAGE: 'xmpp.notice_message',
+
+    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received'
+
 };
 
 module.exports = XMPPEvents;
