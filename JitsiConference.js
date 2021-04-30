@@ -1528,6 +1528,15 @@ JitsiConference.prototype.kickParticipant = function(id) {
     this.room.kick(participant.getJid());
 };
 
+JitsiConference.prototype.sendUserDeviceAccessConfiguration = function(userDeviceAccessDisabled) {
+    // call the sendMessage function from ChatRoom with element name userdeviceaccessdisabled
+    if(userDeviceAccessDisabled) {
+        this.room.sendMessage("true", 'userdeviceaccessdisabled');
+    } else {
+        this.room.sendMessage("false", 'userdeviceaccessdisabled');
+    }
+}
+
 /**
  * Disable chat for participant from this conference.
  * @param {string} id id of the participant to disable

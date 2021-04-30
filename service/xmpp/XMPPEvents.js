@@ -315,8 +315,11 @@ const XMPPEvents = {
 
     NOTICE_MESSAGE: 'xmpp.notice_message',
 
-    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received'
+    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received',
 
+    // start of added portion
+    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled'
+    // end of added portion
 };
 
 module.exports = XMPPEvents;
