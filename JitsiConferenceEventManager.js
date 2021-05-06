@@ -86,37 +86,34 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
                     offerIq, jingleSession.peerconnection);
         });
 
+    // delegate to jitsi-meet for asking unmute
+    this.chatRoomForwarder.forward(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
+        JitsiConferenceEvents.AUDIO_MUTED_BY_FOCUS);
 
-    chatRoom.addListener(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
-        actor => {
-            // TODO: Add a way to differentiate between commands which caused
-            // us to mute and those that did not change our state (i.e. we were
-            // already muted).
-            Statistics.sendAnalytics(createRemotelyMutedEvent());
+    this.chatRoomForwarder.forward(XMPPEvents.VIDEO_MUTED_BY_FOCUS,
+        JitsiConferenceEvents.VIDEO_MUTED_BY_FOCUS);
 
-            conference.mutedByFocusActor = actor;
+    this.chatRoomForwarder.forward(XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
+        JitsiConferenceEvents.ACK_AUDIO_MUTED_BY_FOCUS);
 
-            // set isMutedByFocus when setAudioMute Promise ends
-            conference.rtc.setAudioMute(true).then(
-                () => {
-                    conference.isMutedByFocus = true;
-                    conference.mutedByFocusActor = null;
-                })
-                .catch(
-                    error => {
-                        conference.mutedByFocusActor = null;
-                        logger.warn(
-                            'Error while audio muting due to focus request', error);
-                    });
-        }
-    );
+    this.chatRoomForwarder.forward(XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
+        JitsiConferenceEvents.ACK_VIDEO_MUTED_BY_FOCUS);
 
     this.chatRoomForwarder.forward(XMPPEvents.SUBJECT_CHANGED,
         JitsiConferenceEvents.SUBJECT_CHANGED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.TIME_REMAINED,
+        JitsiConferenceEvents.TIME_REMAINED);
+
+    this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
+        JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
+
     this.chatRoomForwarder.forward(XMPPEvents.MUC_JOINED,
         JitsiConferenceEvents.CONFERENCE_JOINED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.NOTICE_MESSAGE,
+        JitsiConferenceEvents.NOTICE_MESSAGE);
+    
     // send some analytics events
     chatRoom.addListener(XMPPEvents.MUC_JOINED,
         () => {
@@ -272,6 +269,16 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
 
     chatRoom.addListener(XMPPEvents.KICKED,
         conference.onMemberKicked.bind(conference));
+    
+    chatRoom.addListener(XMPPEvents.PARTICIPANT_CHAT_DISABLED,
+        conference.onParticipantChatDisabled.bind(conference));
+
+    chatRoom.addListener(XMPPEvents.PARTICIPANT_CHAT_ENABLED,
+        conference.onParticipantChatEnabled.bind(conference));
+    
+    chatRoom.addListener(XMPPEvents.MODERATOR_ROLE_GRANTED,
+        conference.onModeratorRoleGranted.bind(conference));
+
     chatRoom.addListener(XMPPEvents.SUSPEND_DETECTED,
         conference.onSuspendDetected.bind(conference));
 
@@ -384,6 +391,15 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
                     + `participant: ${from}`,
                     payload);
             }
+        });
+
+    chatRoom.addListener(XMPPEvents.HANGUP_ALL_MESSAGE_RECEIVED,
+        (from, payload) => {
+            const id = Strophe.getResourceFromJid(from);
+
+            conference.eventEmitter.emit(
+                JitsiConferenceEvents.HANGUP_ALL_MESSAGE_RECEIVED,
+                id, payload);
         });
 
     chatRoom.addPresenceListener('startmuted', (data, from) => {

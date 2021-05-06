@@ -13,7 +13,7 @@ import Listenable from '../util/Listenable';
 import Lobby from './Lobby';
 import XmppConnection from './XmppConnection';
 import Moderator from './moderator';
-
+import RandomUtil from '../util/RandomUtil';
 const logger = getLogger(__filename);
 
 export const parser = {
@@ -68,7 +68,6 @@ export const parser = {
  */
 function filterNodeFromPresenceJSON(pres, nodeName) {
     const res = [];
-
     for (let i = 0; i < pres.length; i++) {
         if (pres[i].tagName === nodeName) {
             res.push(pres[i]);
@@ -293,7 +292,7 @@ export default class ChatRoom extends Listenable {
                 to: this.roomjid
             })
                 .c('query', { xmlns: Strophe.NS.DISCO_INFO });
-
+        //send the getInfo IQ tag we built above using the sendIQ helper function and its response is stored in result
         this.connection.sendIQ(getInfo, result => {
             const locked
                 = $(result).find('>query>feature[var="muc_passwordprotected"]')
@@ -313,6 +312,34 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No meeting ID from backend');
             }
+
+            const timeRemained
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');
+
+            if (timeRemained.length) {
+                const secTimeRemained = parseInt(timeRemained.text(), 10);
+                this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
+            } else {
+                logger.warn('No time remained from backend');
+            }
+
+            const userDeviceAccessDisabledStr
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userDeviceAccessDisabled"]>value');
+
+            // convert userDeviceAccessDisabledStr to boolean
+            let userDeviceAccessDisabledFlag; 
+            
+            // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
+            if (userDeviceAccessDisabledStr.text() === "true") {
+                userDeviceAccessDisabledFlag = true;
+                // emit XMPP event to broadcast the value to all participants
+                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+            } else if (userDeviceAccessDisabledStr.text() === "false") {
+                userDeviceAccessDisabledFlag = false;
+                // emit XMPP event to broadcast the value to all participants
+                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+            }
+        
 
             const membersOnly = $(result).find('>query>feature[var="muc_membersonly"]').length === 1;
 
@@ -538,13 +565,37 @@ export default class ChatRoom extends Listenable {
 
         if (from === this.myroomjid) {
             const newRole
-                = member.affiliation === 'owner' ? member.role : 'none';
-
+                = member.affiliation === 'owner' ? member.role : member.role; // ternary option was initially 'none';
             if (this.role !== newRole) {
                 this.role = newRole;
-                this.eventEmitter.emit(
-                    XMPPEvents.LOCAL_ROLE_CHANGED,
-                    this.role);
+                this.eventEmitter.emit(XMPPEvents.LOCAL_ROLE_CHANGED, this.role);
+
+                // emit an event to notify that the local participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(newRole === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // allowed to chat i.e. role changed to "participant"
+                if(newRole === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that the local participant has been
+                // granted moderator right i.e. role changed to "moderator"
+                if(newRole === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
             }
             if (!this.joined) {
                 this.joined = true;
@@ -611,6 +662,34 @@ export default class ChatRoom extends Listenable {
                 memberOfThis.role = member.role;
                 this.eventEmitter.emit(
                     XMPPEvents.MUC_ROLE_CHANGED, from, member.role);
+
+                // emit an event to notify that this remote participant has been 
+                // disabled for chat i.e. role changed to "visitor"
+                if(memberOfThis.role === "visitor") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // allowed for chat i.e. role changed to "participant"
+                if(memberOfThis.role === "participant") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
+                    );
+                }
+
+                // emit an event to notify that this remote participant has been 
+                // granted moderator rights i.e. role changed to "moderator"
+                if(memberOfThis.role === "moderator") {
+                    let participantId = Strophe.getResourceFromJid(from);
+                    this.eventEmitter.emit(
+                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
+                    );
+                }
+                // end of added portion
             }
 
             // affiliation changed
@@ -834,6 +913,47 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
+     * Query if upload service is available
+     * 
+     */
+    isUploadServiceAvailable() {
+        const iqquery = $iq({ 
+            from: this.meetingId,
+            to: 'upload.vmeeting1.postech.ac.kr',
+            type: 'get',
+            id: RandomUtil.randomHexString(8).toLowerCase()
+        });
+        iqquery.c('query', { 'xmlns': Strophe.NS.DISCO_INFO});
+        this.connection.sendIQ(iqquery, result => {
+            console.log("Result of service discovery is: ", result);
+        });
+    }
+
+    requestAFileSlot(name, size) {
+        const iqquery = $iq({
+            from: this.meetingId,
+            to: 'upload.vmeeting1.postech.ac.kr',
+            type: 'get',
+            id: RandomUtil.randomHexString(8).toLowerCase()
+        });
+        iqquery.c('request', { xmlns: 'urn:xmpp:http:upload:0', filename: name, size: size});
+        this.connection.sendIQ(iqquery, result => {
+            console.log("Result of slot request is: ", result);
+        });
+
+    }
+
+    /**
+     * Uploading the file selected from the user in a chatroom to XMPP server
+     * @param {File} sharedFile 
+     */
+    uploadSharedFile(sharedFile) {
+        console.log("This function will upload the file shared by user: ", sharedFile);
+        this.isUploadServiceAvailable();
+        this.requestAFileSlot(sharedFile.name, sharedFile.size);
+    }
+    
+    /**
      * Send text message to the other participants in the conference
      * @param message
      * @param elementName
@@ -842,7 +962,6 @@ export default class ChatRoom extends Listenable {
     sendMessage(message, elementName, nickname) {
         const msg = $msg({ to: this.roomjid,
             type: 'groupchat' });
-
         // We are adding the message in a packet extension. If this element
         // is different from 'body', we add a custom namespace.
         // e.g. for 'json-message' extension of message stanza.
@@ -896,6 +1015,31 @@ export default class ChatRoom extends Listenable {
     }
     /* eslint-enable max-params */
 
+        /**
+     * Send text message to the other participants in the conference
+     * @param message
+     * @param elementName
+     * @param nickname
+     */
+    sendHangupMessage(message, elementName, nickname) {
+        const msg = $msg({ to: this.roomjid,
+            type: 'groupchat' });
+
+        // We are adding the message in a packet extension. If this element
+        // is different from 'body', we add a custom namespace.
+        // e.g. for 'json-message' extension of message stanza.
+
+        msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message);
+        if (nickname) {
+            msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })
+                .t(nickname)
+                .up()
+                .up();
+        }
+        this.connection.send(msg);
+        this.eventEmitter.emit(XMPPEvents.SENDING_CHAT_MESSAGE, message);
+    }
+
     /**
      *
      * @param subject
@@ -939,7 +1083,6 @@ export default class ChatRoom extends Listenable {
 
         // room destroyed ?
         const destroySelect = $(pres).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>destroy');
-
         if (destroySelect.length) {
             let reason;
             const reasonSelect
@@ -952,6 +1095,24 @@ export default class ChatRoom extends Listenable {
             }
 
             this.eventEmitter.emit(XMPPEvents.MUC_DESTROYED, reason, destroySelect.attr('jid'));
+            this.connection.emuc.doLeave(this.roomjid);
+
+            return true;
+        }
+
+        const outcastSelect = $(pres).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>item[affiliation="outcast"]');
+        if (outcastSelect.length) {
+            let reason;
+            const reasonSelect
+                = $(pres).find(
+                    '>x[xmlns="http://jabber.org/protocol/muc#user"]'
+                        + '>item[affiliation="outcast"]>reason');
+
+            if (reasonSelect.length) {
+                reason = reasonSelect.text();
+            }
+
+            this.eventEmitter.emit(XMPPEvents.MUC_DESTROYED, reason, outcastSelect.attr('jid'));
             this.connection.emuc.doLeave(this.roomjid);
 
             return true;
@@ -1049,6 +1210,42 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        const timeremained = $(msg).find('>timeremained');
+        if (timeremained.length) {
+            try {
+                const secTimeRemained = parseInt(timeremained.text(), 10);
+                this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
+                logger.log(`Conference will terminate after ${secTimeRemained} seconds`);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        const noticeMessage = $(msg).find('>notice');
+        if (noticeMessage.length) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTICE_MESSAGE, noticeMessage.text());
+                logger.log(`Conference received notice message: ${noticeMessage.text()}`);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
+        let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
+        let userDeviceAccessFlag;
+
+        // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
+        if(userDeviceAccessStr === "true") {
+            userDeviceAccessFlag = true;
+            // emit XMPP event to broadcast the value to all participants
+            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        } else if(userDeviceAccessStr == "false") {
+            userDeviceAccessFlag = false;
+            // emit XMPP event to broadcast the value to all participants
+            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
+        }
+
         // xep-0203 delay
         let stamp = $(msg).find('>delay').attr('stamp');
 
@@ -1069,7 +1266,7 @@ export default class ChatRoom extends Listenable {
             let invite;
 
             if ($(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>status[code="104"]').length) {
-                !this.options.disableDiscoInfo && this.discoRoomInfo();
+                this.discoRoomInfo();
             } else if ((invite = $(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>invite'))
                         && invite.length) {
                 const passwordSelect = $(msg).find('>x[xmlns="http://jabber.org/protocol/muc#user"]>password');
@@ -1093,6 +1290,13 @@ export default class ChatRoom extends Listenable {
             // delivered after a delay, i.e. stamp is undefined.
             // e.g. - subtitles should not be displayed if delayed.
             if (parsedJson && stamp === undefined) {
+                if(parsedJson.type === 'hangup_all'){
+                    this.eventEmitter.emit(XMPPEvents.HANGUP_ALL_MESSAGE_RECEIVED,
+                        from, parsedJson);
+
+                    return;
+                }
+
                 this.eventEmitter.emit(XMPPEvents.JSON_MESSAGE_RECEIVED,
                     from, parsedJson);
 
@@ -1193,6 +1397,74 @@ export default class ChatRoom extends Listenable {
             result => logger.log('Set affiliation of participant with jid: ', jid, 'to', affiliation, result),
             error => logger.log('Set affiliation of participant error: ', error));
     }
+
+    /**
+     *
+     * @param jid
+     */
+    disableChatForParticipant(jid) {
+        const disableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'visitor' })
+            .c('reason').t('You have been disabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            disableChatIQ,
+            result => logger.log('Disable chat for participant with jid: ', jid, result),
+            error => logger.log('Disable chat for participant error: ', error));
+    }
+
+    /* eslint-disable max-params */
+
+    /**
+     *
+     * @param jid
+     */
+    enableChatForParticipant(jid) {
+        const enableChatIQ = $iq({ to: this.roomjid,
+            type: 'set' })
+            .c('query', { xmlns: 'http://jabber.org/protocol/muc#admin' })
+            .c('item', { nick: Strophe.getResourceFromJid(jid),
+                role: 'participant' })
+            .c('reason').t('You are now enabled for group chat.').up().up().up();
+
+        this.connection.sendIQ(
+            enableChatIQ,
+            result => logger.log('Chat enabled for participant with jid: ', jid, result),
+            error => logger.log('Chat enabled for participant error: ', error));
+    }
+
+    // current logic for enabling chat for all participants is:
+    // only those users who have "visitor" role will be changed to "participant" role
+    enableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to enable chat for participants who are "visitors" and thus grant them voice in the chatroom
+            if(this.members[participant].role === "visitor") {
+                this.enableChatForParticipant(participant);
+            }
+        }); 
+    }
+
+    // current logic for disabling chat for all participants is:
+    // only those users who have "participant" role will be changed to "visitor" role
+    // users with "moderator" roles are left as it is
+    disableChatForAll() {
+        const allparticipantJIDs = Object.keys(this.members);
+        console.log("JID of members of this room are: ", allparticipantJIDs);
+
+        allparticipantJIDs.forEach(participant => {
+            // we want to disable "participants" who have voice except the "moderators"
+            if(this.members[participant].role === "participant") {
+                this.disableChatForParticipant(participant);
+            }
+        });
+    }
+
+    /* eslint-disable max-params */
 
     /**
      *
@@ -1585,10 +1857,14 @@ export default class ChatRoom extends Listenable {
             mutedNode = filterNodeFromPresenceJSON(pres, 'audiomuted');
         } else if (mediaType === MediaType.VIDEO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'videomuted');
+            const codecTypeNode = filterNodeFromPresenceJSON(pres, 'jitsi_participant_codecType');
             const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoType');
 
             if (videoTypeNode.length > 0) {
                 data.videoType = videoTypeNode[0].value;
+            }
+            if (codecTypeNode.length > 0) {
+                data.codecType = codecTypeNode[0].value;
             }
         } else {
             logger.error(`Unsupported media type: ${mediaType}`);
@@ -1667,8 +1943,8 @@ export default class ChatRoom extends Listenable {
      */
     muteParticipant(jid, mute) {
         logger.info('set mute', mute);
-        const iqToFocus = $iq(
-            { to: this.focusMucJid,
+        const iqToJid = $iq(
+            { to: jid,
                 type: 'set' })
             .c('mute', {
                 xmlns: 'http://jitsi.org/jitmeet/audio',
@@ -1678,7 +1954,76 @@ export default class ChatRoom extends Listenable {
             .up();
 
         this.connection.sendIQ(
-            iqToFocus,
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Mutes remote participant video.
+     * @param jid of the participant
+     * @param mute
+     */
+     muteParticipantVideo(jid, mute) {
+        logger.info('set mute video', mute);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('mutevideo', {
+                xmlns: 'http://jitsi.org/jitmeet/video',
+                jid
+            })
+            .t(mute.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Ack for muting remote participant.
+     * @param jid of the participant
+     * @param ack
+     */
+    ackMuteParticipant(jid, ack) {
+        logger.info('ack mute', ack);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('ackmute', {
+                xmlns: 'http://jitsi.org/jitmeet/audio',
+                jid
+            })
+            .t(ack.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
+            result => logger.log('set mute', result),
+            error => logger.log('set mute error', error));
+    }
+
+    /**
+     * Ack for muting remote participant video.
+     * @param jid of the participant
+     * @param ack
+     */
+    ackMuteParticipantVideo(jid, ack) {
+        logger.info('ack mute video', ack);
+        const iqToJid = $iq(
+            { to: jid,
+                type: 'set' })
+            .c('ackmutevideo', {
+                xmlns: 'http://jitsi.org/jitmeet/video',
+                jid
+            })
+            .t(ack.toString())
+            .up();
+
+        this.connection.sendIQ(
+            iqToJid,
             result => logger.log('set mute', result),
             error => logger.log('set mute error', error));
     }
@@ -1690,21 +2035,78 @@ export default class ChatRoom extends Listenable {
     onMute(iq) {
         const from = iq.getAttribute('from');
 
-        if (from !== this.focusMucJid) {
-            logger.warn('Ignored mute from non focus peer');
+        // if (from !== this.focusMucJid) {
+        //     logger.warn('Ignored mute from non focus peer');
 
-            return;
-        }
+        //     return;
+        // }
         const mute = $(iq).find('mute');
 
-        if (mute.length && mute.text() === 'true') {
-            this.eventEmitter.emit(XMPPEvents.AUDIO_MUTED_BY_FOCUS, mute.attr('actor'));
+        if (mute.length) {
+            this.eventEmitter.emit(
+                XMPPEvents.AUDIO_MUTED_BY_FOCUS,
+                from,
+                mute.text() === 'true');
         } else {
             // XXX Why do we support anything but muting? Why do we encode the
             // value in the text of the element? Why do we use a separate XML
             // namespace?
             logger.warn('Ignoring a mute request which does not explicitly '
                 + 'specify a positive mute command.');
+        }
+
+        const ackMute = $(iq).find('ackmute');
+        if (ackMute.length) {
+            const nick = Strophe.getResourceFromJid(from);
+            this.eventEmitter.emit(
+                XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
+                nick,
+                ackMute.text() === 'true'
+            );
+        } else {
+            logger.warn('Ignoring a ack mute request which does not explicitly '
+                + 'specify a positive ackmute command.');
+        }
+    }
+
+    /**
+     * TODO: Document
+     * @param iq
+     */
+    onMuteVideo(iq) {
+        const from = iq.getAttribute('from');
+
+        // if (from !== this.focusMucJid) {
+        //     logger.warn('Ignored mute from non focus peer');
+
+        //     return;
+        // }
+        const mute = $(iq).find('mutevideo');
+
+        if (mute.length) {
+            this.eventEmitter.emit(
+                XMPPEvents.VIDEO_MUTED_BY_FOCUS,
+                from,
+                mute.text() === 'true');
+        } else {
+            // XXX Why do we support anything but muting? Why do we encode the
+            // value in the text of the element? Why do we use a separate XML
+            // namespace?
+            logger.warn('Ignoring a mute video request which does not explicitly '
+                + 'specify a positive mute command.');
+        }
+
+        const ackMute = $(iq).find('ackmutevideo');
+        if (ackMute.length) {
+            const nick = Strophe.getResourceFromJid(from);
+            this.eventEmitter.emit(
+                XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
+                nick,
+                ackMute.text() === 'true'
+            );
+        } else {
+            logger.warn('Ignoring a ack mute request which does not explicitly '
+                + 'specify a positive ackmute command.');
         }
     }
 

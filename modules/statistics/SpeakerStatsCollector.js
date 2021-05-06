@@ -257,10 +257,10 @@ export default class SpeakerStatsCollector {
                     this.stats.users[userId] = speakerStatsToUpdate;
                     speakerStatsToUpdate.markAsHasLeft();
                 }
-            }
 
-            speakerStatsToUpdate.totalDominantSpeakerTime
-                = newStats[userId].totalDominantSpeakerTime;
+                speakerStatsToUpdate.totalDominantSpeakerTime
+                    = newStats[userId].totalDominantSpeakerTime;
+            }
 
             //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
             if(!this.stats.userIdMatching[userId]){
@@ -302,10 +302,10 @@ export default class SpeakerStatsCollector {
                         speakerStatsToUpdateIdentity.markAsHasLeft();
                     }
                 }
-            }
 
-            speakerStatsToUpdateIdentity.totalDominantSpeakerTime
-                = newStats[userId].totalDominantSpeakerTime;
+                speakerStatsToUpdateIdentity.totalDominantSpeakerTime
+                    = newStats[userId].totalDominantSpeakerTime;
+            }
         }
     }
 

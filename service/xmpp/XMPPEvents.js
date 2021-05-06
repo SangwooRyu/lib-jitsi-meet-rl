@@ -297,7 +297,29 @@ const XMPPEvents = {
      * Event which is emitted when the body in an XMPP message in the MUC
      * contains JSON
      */
-    JSON_MESSAGE_RECEIVED: 'xmmp.json_message_received'
+    JSON_MESSAGE_RECEIVED: 'xmmp.json_message_received',
+
+    PARTICIPANT_CHAT_DISABLED: 'xmpp.participant_chat_disabled',
+
+    PARTICIPANT_CHAT_ENABLED: 'xmpp.participant_chat_enabled',
+
+    MODERATOR_ROLE_GRANTED: 'xmpp.moderator_role_granted',
+
+    TIME_REMAINED: 'xmpp.time_remained',
+
+    VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus',
+
+    ACK_AUDIO_MUTED_BY_FOCUS: 'xmpp.ack_audio_muted_by_focus',
+
+    ACK_VIDEO_MUTED_BY_FOCUS: 'xmpp.ack_video_muted_by_focus',
+
+    NOTICE_MESSAGE: 'xmpp.notice_message',
+
+    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received',
+
+    // start of added portion
+    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled'
+    // end of added portion
 };
 
 module.exports = XMPPEvents;

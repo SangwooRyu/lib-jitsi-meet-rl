@@ -13,6 +13,7 @@ import JitsiTrackError from './JitsiTrackError';
 import * as JitsiTrackErrors from './JitsiTrackErrors';
 import * as JitsiTrackEvents from './JitsiTrackEvents';
 import authenticateAndUpgradeRole from './authenticateAndUpgradeRole';
+import { CodecSelection } from './modules/RTC/CodecSelection';
 import RTC from './modules/RTC/RTC';
 import browser from './modules/browser';
 import ConnectionQuality from './modules/connectivity/ConnectionQuality';
@@ -47,6 +48,7 @@ import {
     FEATURE_JIGASI,
     JITSI_MEET_MUC_TYPE
 } from './modules/xmpp/xmpp';
+import CodecMimeType from './service/RTC/CodecMimeType';
 import * as MediaType from './service/RTC/MediaType';
 import VideoType from './service/RTC/VideoType';
 import {
@@ -65,7 +67,7 @@ import {
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
 import ParticipantLog from './modules/plog/plog'
-
+import ChatRoom from './modules/xmpp/ChatRoom';
 const logger = getLogger(__filename);
 
 /**
@@ -311,6 +313,22 @@ JitsiConference.prototype._init = function(options = {}) {
 
     const { config } = this.options;
 
+    // Get the codec preference settings from config.js.
+    // 'preferH264' and 'disableH264' settings have been deprecated for a while,
+    // 'preferredCodec' and 'disabledCodec' will have precedence over them.
+    const codecSettings = {
+        disabledCodec: config.videoQuality
+            ? config.videoQuality.disabledCodec
+            : config.p2p && config.p2p.disableH264 && CodecMimeType.H264,
+        enforcePreferredCodec: config.videoQuality && config.videoQuality.enforcePreferredCodec,
+        jvbCodec: (config.videoQuality && config.videoQuality.preferredCodec)
+            || (config.preferH264 && CodecMimeType.H264),
+        p2pCodec: config.p2p
+            ? config.p2p.preferredCodec || (config.p2p.preferH264 && CodecMimeType.H264)
+            : CodecMimeType.VP8
+    };
+
+    this.codecSelection = new CodecSelection(this, codecSettings);
     this._statsCurrentId = config.statisticsId ? config.statisticsId : Settings.callStatsUserName;
     this.room = this.xmpp.createRoom(
         this.options.name, {
@@ -487,6 +505,9 @@ JitsiConference.prototype._init = function(options = {}) {
         this.setLocalParticipantProperty(
             'region', config.deploymentInfo.userRegion);
     }
+
+    // Publish the codec type to presence.
+    this.setLocalParticipantProperty('codecType', this.codecSelection.getPreferredCodec());
 };
 
 /**
@@ -849,6 +870,36 @@ JitsiConference.prototype.sendPrivateTextMessage = function(
     }
 };
 
+JitsiConference.prototype.sendHangupMessage = function(
+    elementName = 'json-message') {
+    if (this.room) {
+        const displayName = (this.room.getFromPresence('nick') || {}).value;
+        const message = {
+            type: 'hangup_all'
+        };
+
+        let messageToSend = message;
+
+        // Name of packet extension of message stanza to send the required
+        // message in.
+
+        // Mark as valid JSON message if not already
+        if (!messageToSend.hasOwnProperty(JITSI_MEET_MUC_TYPE)) {
+            messageToSend[JITSI_MEET_MUC_TYPE] = '';
+        }
+
+        try {
+            messageToSend = JSON.stringify(messageToSend);
+        } catch (e) {
+            logger.error('Can not send a message, stringify failed: ', e);
+
+            return;
+        }
+
+        this.room.sendHangupMessage(messageToSend, elementName, displayName);
+    }
+};
+
 /**
  * Send presence command.
  * @param name {String} the name of the command.
@@ -861,7 +912,6 @@ JitsiConference.prototype.sendCommand = function(name, values) {
     } else {
         logger.warn('Not sending a command, room not initialized.');
     }
-
 };
 
 /**
@@ -1443,6 +1493,16 @@ JitsiConference.prototype.getParticipantById = function(id) {
 };
 
 /**
+ * @returns {JitsiParticipant} the participant in this conference with the
+ * specified statsID (or undefined if there isn't one).
+ * @param statsID the id of the participant.
+ */
+JitsiConference.prototype.getParticipantByStatsID = function(statsID) {
+    const participants = this.getParticipants();
+    return participants.find(p => p._statsID === statsID);
+};
+
+/**
  * Grant owner rights to the participant.
  * @param {string} id id of the participant to grant owner rights to.
  */
@@ -1467,6 +1527,53 @@ JitsiConference.prototype.kickParticipant = function(id) {
     }
     this.room.kick(participant.getJid());
 };
+
+JitsiConference.prototype.sendUserDeviceAccessConfiguration = function(userDeviceAccessDisabled) {
+    // call the sendMessage function from ChatRoom with element name userdeviceaccessdisabled
+    if(userDeviceAccessDisabled) {
+        this.room.sendMessage("true", 'userdeviceaccessdisabled');
+    } else {
+        this.room.sendMessage("false", 'userdeviceaccessdisabled');
+    }
+}
+
+/**
+ * Disable chat for participant from this conference.
+ * @param {string} id id of the participant to disable
+ */
+JitsiConference.prototype.disableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.disableChatForParticipant(participant.getJid());
+};
+
+/**
+ * Enable chat for participant from this conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForParticipant = function(id) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.enableChatForParticipant(participant.getJid());
+};
+
+/**
+ * Enable chat for all participants from the conference.
+ * @param {string} id id of the participant to enable
+ */
+JitsiConference.prototype.enableChatForAll = function() {
+    this.room.enableChatForAll();
+};
+
+JitsiConference.prototype.disableChatForAll = function() {
+    this.room.disableChatForAll();
+}
 
 /**
  * Maybe clears the timeout which emits {@link ACTION_JINGLE_SI_TIMEOUT}
@@ -1506,14 +1613,53 @@ JitsiConference.prototype._maybeSetSITimeout = function() {
 /**
  * Mutes a participant.
  * @param {string} id The id of the participant to mute.
+ * @param {Boolean} mute whether mute or unmute
  */
-JitsiConference.prototype.muteParticipant = function(id) {
+JitsiConference.prototype.muteParticipant = function(id, mute) {
     const participant = this.getParticipantById(id);
 
     if (!participant) {
         return;
     }
-    this.room.muteParticipant(participant.getJid(), true);
+    this.room.muteParticipant(participant.getJid(), mute);
+};
+
+/**
+ * Mutes a participant video.
+ * @param {string} id The id of the participant to mute.
+ * @param {Boolean} mute whether mute or unmute
+ */
+JitsiConference.prototype.muteParticipantVideo = function(id, mute) {
+    const participant = this.getParticipantById(id);
+
+    if (!participant) {
+        return;
+    }
+    this.room.muteParticipantVideo(participant.getJid(), mute);
+};
+
+/**
+ * ack mutes a participant.
+ * @param {string} id The id of the participant to toggle.
+ */
+JitsiConference.prototype.ackMuteParticipant = function(jid, ack) {
+    if (!jid) {
+        return;
+    }
+
+    this.room.ackMuteParticipant(jid, ack);
+};
+
+/**
+ * ack mutes a participant.
+ * @param {string} id The id of the participant to toggle.
+ */
+JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
+    if (!jid) {
+        return;
+    }
+
+    this.room.ackMuteParticipantVideo(jid, ack);
 };
 
 /* eslint-disable max-params */
@@ -1688,12 +1834,25 @@ JitsiConference.prototype.onMemberKicked = function(isSelfPresence, actorId, kic
 
         return;
     }
-
     const kickedParticipant = this.participants[kickedParticipantId];
 
     this.eventEmitter.emit(
         JitsiConferenceEvents.PARTICIPANT_KICKED, actorParticipant, kickedParticipant);
 };
+
+// this function is for notifying the affected user that they were disabled for chat by broadcasting an event 
+JitsiConference.prototype.onParticipantChatDisabled = function(disabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, disabledParticipantID);
+}
+
+JitsiConference.prototype.onParticipantChatEnabled = function(enabledParticipantID) {
+    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, enabledParticipantID);
+}
+
+JitsiConference.prototype.onModeratorRoleGranted = function(participantId) {
+    this.eventEmitter.emit(JitsiConferenceEvents.MODERATOR_ROLE_GRANTED, participantId);
+}
+// end of added portion
 
 /**
  * Method called on local MUC role change.
@@ -3580,4 +3739,15 @@ JitsiConference.prototype.getParticipantLogIdentity = function(){
 
 JitsiConference.prototype.getParticipantIdentityById = function(id){
     return this.participants[id]? this.participants[id].getIdentityId() : null;
+}
+
+/**
+ * Share a file into the conference meeting
+ * @param sharedFile the file to be shared in the conference
+ */
+JitsiConference.prototype.uploadSharedFile = function(sharedFile) {
+    console.log("I have reached lib-jitsi-meet");
+    if(this.room) {
+        this.room.uploadSharedFile(sharedFile);
+    }
 }
