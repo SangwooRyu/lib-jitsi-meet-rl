@@ -2553,7 +2553,7 @@ JitsiConference.prototype.isStartVideoMuted = function() {
  * Returns measured connectionTimes.
  */
 JitsiConference.prototype.getConnectionTimes = function() {
-    return this.room.connectionTimes;
+    return this.room?.connectionTimes;
 };
 
 /**
