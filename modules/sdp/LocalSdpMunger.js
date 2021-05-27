@@ -3,7 +3,8 @@
 import { getLogger } from 'jitsi-meet-logger';
 
 import * as MediaType from '../../service/RTC/MediaType';
-import { SdpTransformWrap } from '../xmpp/SdpTransformUtil';
+
+import { SdpTransformWrap } from './SdpTransformUtil';
 
 const logger = getLogger(__filename);
 
@@ -21,9 +22,11 @@ export default class LocalSdpMunger {
      * Creates new <tt>LocalSdpMunger</tt> instance.
      *
      * @param {TraceablePeerConnection} tpc
+     * @param {string} localEndpointId - The endpoint id of the local user.
      */
-    constructor(tpc) {
+    constructor(tpc, localEndpointId) {
         this.tpc = tpc;
+        this.localEndpointId = localEndpointId;
     }
 
     /**
@@ -76,12 +79,6 @@ export default class LocalSdpMunger {
                 = mediaStream && this.tpc.isMediaStreamInPc(mediaStream);
             const shouldFakeSdp = muted || !isInPeerConnection;
 
-            logger.debug(
-                `${this.tpc} ${videoTrack} muted: ${
-                    muted}, is in PeerConnection: ${
-                    isInPeerConnection} => should fake sdp ? : ${
-                    shouldFakeSdp}`);
-
             if (!shouldFakeSdp) {
                 continue; // eslint-disable-line no-continue
             }
@@ -93,8 +90,7 @@ export default class LocalSdpMunger {
                     : [ this.tpc.sdpConsistency.cachedPrimarySsrc ];
 
             if (!requiredSSRCs.length) {
-                logger.error(
-                    `No SSRCs stored for: ${videoTrack} in ${this.tpc}`);
+                logger.error(`No SSRCs stored for: ${videoTrack} in ${this.tpc}`);
 
                 continue; // eslint-disable-line no-continue
             }
@@ -121,9 +117,6 @@ export default class LocalSdpMunger {
                 videoMLine.removeSSRC(ssrcNum);
 
                 // Inject
-                logger.debug(
-                    `${this.tpc} injecting video SSRC: ${ssrcNum} for ${
-                        videoTrack}`);
                 videoMLine.addSSRCAttribute({
                     id: ssrcNum,
                     attribute: 'cname',
@@ -143,9 +136,6 @@ export default class LocalSdpMunger {
 
                 if (!videoMLine.findGroup(group.semantics, group.ssrcs)) {
                     // Inject the group
-                    logger.debug(
-                        `${this.tpc} injecting SIM group for ${videoTrack}`,
-                        group);
                     videoMLine.addSSRCGroup(group);
                 }
             }
@@ -160,6 +150,32 @@ export default class LocalSdpMunger {
         }
 
         return modified;
+    }
+
+    /**
+     * Returns a string that can be set as the MSID attribute for a source.
+     *
+     * @param {string} mediaType - Media type of the source.
+     * @param {string} trackId - Id of the MediaStreamTrack associated with the source.
+     * @param {string} streamId - Id of the MediaStream associated with the source.
+     * @returns {string|null}
+     */
+    _generateMsidAttribute(mediaType, trackId, streamId = null) {
+        if (!(mediaType && trackId)) {
+            logger.warn(`Unable to munge local MSID - track id=${trackId} or media type=${mediaType} is missing`);
+
+            return null;
+        }
+        const pcId = this.tpc.id;
+
+        // Handle a case on Firefox when the browser doesn't produce a 'a:ssrc' line with the 'msid' attribute or has
+        // '-' for the stream id part of the msid line. Jicofo needs an unique identifier to be associated with a ssrc
+        // and uses the msid for that.
+        if (streamId === '-' || !streamId) {
+            return `${this.localEndpointId}-${mediaType}-${pcId} ${trackId}-${pcId}`;
+        }
+
+        return `${streamId}-${pcId} ${trackId}-${pcId}`;
     }
 
     /**
@@ -187,19 +203,49 @@ export default class LocalSdpMunger {
                     const streamAndTrackIDs = ssrcLine.value.split(' ');
 
                     if (streamAndTrackIDs.length === 2) {
-                        const streamId = streamAndTrackIDs[0];
-                        const trackId = streamAndTrackIDs[1];
-
                         ssrcLine.value
-                            = `${streamId}-${pcId} ${trackId}-${pcId}`;
+                            = this._generateMsidAttribute(
+                                mediaSection.mLine?.type,
+                                streamAndTrackIDs[1],
+                                streamAndTrackIDs[0]);
                     } else {
-                        logger.warn(
-                            'Unable to munge local MSID'
-                                + `- weird format detected: ${ssrcLine.value}`);
+                        logger.warn(`Unable to munge local MSID - weird format detected: ${ssrcLine.value}`);
                     }
                 }
                 break;
             }
+            }
+        }
+
+        // If the msid attribute is missing, then remove the ssrc from the transformed description so that a
+        // source-remove is signaled to Jicofo. This happens when the direction of the transceiver (or m-line)
+        // is set to 'inactive' or 'recvonly' on Firefox, Chrome (unified) and Safari.
+        const msid = mediaSection.ssrcs.find(s => s.attribute === 'msid');
+
+        if (!this.tpc.isP2P
+            && (!msid
+                || mediaSection.mLine?.direction === 'recvonly'
+                || mediaSection.mLine?.direction === 'inactive')) {
+            mediaSection.ssrcs = undefined;
+            mediaSection.ssrcGroups = undefined;
+
+        // Add the msid attribute if it is missing for p2p sources. Firefox doesn't produce a a=ssrc line
+        // with msid attribute.
+        } else if (this.tpc.isP2P && mediaSection.mLine?.direction === 'sendrecv') {
+            const msidLine = mediaSection.mLine?.msid;
+            const trackId = msidLine && msidLine.split(' ')[1];
+            const sources = [ ...new Set(mediaSection.mLine?.ssrcs?.map(s => s.id)) ];
+
+            for (const source of sources) {
+                const msidExists = mediaSection.ssrcs
+                    .find(ssrc => ssrc.id === source && ssrc.attribute === 'msid');
+                const generatedMsid = this._generateMsidAttribute(mediaSection.mLine?.type, trackId);
+
+                !msidExists && generatedMsid && mediaSection.ssrcs.push({
+                    id: source,
+                    attribute: 'msid',
+                    value: generatedMsid
+                });
             }
         }
     }
