@@ -870,36 +870,6 @@ JitsiConference.prototype.sendPrivateTextMessage = function(
     }
 };
 
-JitsiConference.prototype.sendHangupMessage = function(
-    elementName = 'json-message') {
-    if (this.room) {
-        const displayName = (this.room.getFromPresence('nick') || {}).value;
-        const message = {
-            type: 'hangup_all'
-        };
-
-        let messageToSend = message;
-
-        // Name of packet extension of message stanza to send the required
-        // message in.
-
-        // Mark as valid JSON message if not already
-        if (!messageToSend.hasOwnProperty(JITSI_MEET_MUC_TYPE)) {
-            messageToSend[JITSI_MEET_MUC_TYPE] = '';
-        }
-
-        try {
-            messageToSend = JSON.stringify(messageToSend);
-        } catch (e) {
-            logger.error('Can not send a message, stringify failed: ', e);
-
-            return;
-        }
-
-        this.room.sendHangupMessage(messageToSend, elementName, displayName);
-    }
-};
-
 /**
  * Send presence command.
  * @param name {String} the name of the command.

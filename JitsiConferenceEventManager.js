@@ -393,15 +393,6 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
             }
         });
 
-    chatRoom.addListener(XMPPEvents.HANGUP_ALL_MESSAGE_RECEIVED,
-        (from, payload) => {
-            const id = Strophe.getResourceFromJid(from);
-
-            conference.eventEmitter.emit(
-                JitsiConferenceEvents.HANGUP_ALL_MESSAGE_RECEIVED,
-                id, payload);
-        });
-
     chatRoom.addPresenceListener('startmuted', (data, from) => {
         let isModerator = false;
 

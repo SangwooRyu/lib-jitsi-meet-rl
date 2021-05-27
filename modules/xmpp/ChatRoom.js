@@ -1290,13 +1290,6 @@ export default class ChatRoom extends Listenable {
             // delivered after a delay, i.e. stamp is undefined.
             // e.g. - subtitles should not be displayed if delayed.
             if (parsedJson && stamp === undefined) {
-                if(parsedJson.type === 'hangup_all'){
-                    this.eventEmitter.emit(XMPPEvents.HANGUP_ALL_MESSAGE_RECEIVED,
-                        from, parsedJson);
-
-                    return;
-                }
-
                 this.eventEmitter.emit(XMPPEvents.JSON_MESSAGE_RECEIVED,
                     from, parsedJson);
 

@@ -386,5 +386,3 @@ export const ACK_AUDIO_MUTED_BY_FOCUS = 'conference.ack_audio_muted_by_focus';
 export const ACK_VIDEO_MUTED_BY_FOCUS = 'conference.ack_video_muted_by_focus';
 
 export const NOTICE_MESSAGE = 'conference.notice_message';
-
-export const HANGUP_ALL_MESSAGE_RECEIVED = 'conference.hangup_all_message_received';
