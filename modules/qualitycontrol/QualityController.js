@@ -80,14 +80,23 @@ export class QualityController {
     selectSendMaxFrameHeight() {
         const activeMediaSession = this.conference._getActiveMediaSession();
         const remoteRecvMaxFrameHeight = activeMediaSession && activeMediaSession.getRemoteRecvMaxFrameHeight();
+        let minSendFrameHeightConfig = APP.store.getState()['features/base/config'].minSendFrameHeight;
+
+        let heightToSend = 0;
 
         if (this.preferredSendMaxFrameHeight >= 0 && remoteRecvMaxFrameHeight >= 0) {
-            return Math.min(this.preferredSendMaxFrameHeight, remoteRecvMaxFrameHeight);
+            heightToSend = Math.min(this.preferredSendMaxFrameHeight, remoteRecvMaxFrameHeight);
         } else if (remoteRecvMaxFrameHeight >= 0) {
-            return remoteRecvMaxFrameHeight;
+            heightToSend = remoteRecvMaxFrameHeight;
+        } else {
+            heightToSend = this.preferredSendMaxFrameHeight;
         }
 
-        return this.preferredSendMaxFrameHeight;
+        if (minSendFrameHeightConfig !== 'undefined') {
+            heightToSend = Math.max(heightToSend, minSendFrameHeightConfig);
+        }
+
+        return heightToSend;
     }
 
     /**
