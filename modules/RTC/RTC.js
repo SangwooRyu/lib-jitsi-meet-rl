@@ -273,6 +273,15 @@ export default class RTC extends Listenable {
                 logError(error, 'VideoTypeMessage', this._videoType);
             }
 
+            if (this._recvVideoEndpoints.length) {
+                try {
+                    this._channel.sendRecvVideoEndpointsMessage(this._recvVideoEndpoints);
+                    this._recvVideoEndpoints = [];
+                } catch (error) {
+                    logError(error, 'RecvVideoEndpointMessage', this._recvVideoEndpoints);
+                }
+            }
+
             this.removeListener(RTCEvents.DATA_CHANNEL_OPEN, this._channelOpenListener);
             this._channelOpenListener = null;
         };
@@ -420,8 +429,10 @@ export default class RTC extends Listenable {
 
         if (this._channel && this._channel.isOpen()) {
             this._channel.sendRecvVideoEndpointsMessage(ids);
-            this._recvVideoEndpoints = []
+            this._recvVideoEndpoints = [];
         }
+        
+        return false;
     }
 
     /**

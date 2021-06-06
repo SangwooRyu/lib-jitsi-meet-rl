@@ -108,7 +108,7 @@ export class CodecSelection {
      * @private
      */
     _onMediaSessionStared(mediaSession) {
-        const preferredCodec = mediaSession.isP2P ? this.p2pPreferredCodec : this.jvbPreferredCodec;
+        const preferredCodec = mediaSession?.isP2P ? this.p2pPreferredCodec : this.jvbPreferredCodec;
         const disabledCodec = this.disabledCodec && this._isCodecSupported(this.disabledCodec)
             ? this.disabledCodec
             : null;
