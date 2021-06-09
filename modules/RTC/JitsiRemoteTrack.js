@@ -210,15 +210,9 @@ export default class JitsiRemoteTrack extends JitsiTrack {
         const type = this.isVideoTrack() ? 'video' : 'audio';
 
         const now = window.performance.now();
-        const connectionTimes = this.conference.getConnectionTimes();
-
-        if (!connectionTimes) {
-            console.warn('connectionTimes is not found!');
-            return;
-        }
 
         console.log(`(TIME) Render ${type}:\t`, now);
-        connectionTimes[`${type}.render`] = now;
+        this.conference.getConnectionTimes()[`${type}.render`] = now;
 
         // The conference can be started without calling GUM
         // FIXME if there would be a module for connection times this kind
@@ -231,10 +225,11 @@ export default class JitsiRemoteTrack extends JitsiTrack {
         // Subtract the muc.joined-to-session-initiate duration because jicofo
         // waits until there are 2 participants to start Jingle sessions.
         const ttfm = now
-            - (connectionTimes['session.initiate'] - connectionTimes['muc.joined'])
+            - (this.conference.getConnectionTimes()['session.initiate']
+                - this.conference.getConnectionTimes()['muc.joined'])
             - gumDuration;
 
-        connectionTimes[`${type}.ttfm`] = ttfm;
+        this.conference.getConnectionTimes()[`${type}.ttfm`] = ttfm;
         console.log(`(TIME) TTFM ${type}:\t`, ttfm);
 
         Statistics.sendAnalytics(createTtfmEvent(
