@@ -505,7 +505,10 @@ export default class RTC extends Listenable {
             iceConfig.forceEncodedVideoInsertableStreams = true; // legacy, to be removed in M88.
         }
 
-        if (browser.supportsSdpSemantics()) {
+        const supportsSdpSemantics = browser.isReactNative()
+            || (browser.isChromiumBased() && !options.usesUnifiedPlan);
+
+        if (supportsSdpSemantics) {
             iceConfig.sdpSemantics = 'plan-b';
         }
 

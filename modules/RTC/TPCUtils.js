@@ -1,6 +1,7 @@
 import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
 
+import MediaDirection from '../../service/RTC/MediaDirection';
 import * as MediaType from '../../service/RTC/MediaType';
 import browser from '../browser';
 
@@ -8,13 +9,6 @@ const logger = getLogger(__filename);
 const SIM_LAYER_1_RID = '1';
 const SIM_LAYER_2_RID = '2';
 const SIM_LAYER_3_RID = '3';
-
-const TransceiverDirection = {
-    INACTIVE: 'inactive',
-    RECVONLY: 'recvonly',
-    SENDONLY: 'sendonly',
-    SENDRECV: 'sendrecv'
-};
 
 export const SIM_LAYER_RIDS = [ SIM_LAYER_1_RID, SIM_LAYER_2_RID, SIM_LAYER_3_RID ];
 
@@ -79,12 +73,19 @@ export class TPCUtils {
     _findTransceiver(mediaType, localTrack = null) {
         let transceiver = null;
 
-        if (localTrack) {
-            transceiver = this.pc.peerconnection.getTransceivers()
-                .find(t => t.sender?.track?.id === localTrack.getTrackId());
-        } else if (mediaType) {
+        // Check if the local track has been removed from the peerconnection already.
+        const trackRemoved = !localTrack
+            || (localTrack
+                && browser.doesVideoMuteByStreamRemove()
+                && localTrack.isVideoTrack()
+                && localTrack.isMuted());
+
+        if (trackRemoved) {
             transceiver = this.pc.peerconnection.getTransceivers()
                 .find(t => t.receiver?.track?.kind === mediaType);
+        } else if (localTrack) {
+            transceiver = this.pc.peerconnection.getTransceivers()
+                .find(t => t.sender?.track?.id === localTrack.getTrackId());
         }
 
         return transceiver;
@@ -227,7 +228,7 @@ export class TPCUtils {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added
             // to the peerconnection before a session-initiate is sent over to the peer.
             const transceiverInit = {
-                direction: TransceiverDirection.SENDRECV,
+                direction: MediaDirection.SENDRECV,
                 streams: [ localTrack.getOriginalStream() ],
                 sendEncodings: []
             };
@@ -257,7 +258,7 @@ export class TPCUtils {
         if (!transceiver) {
             return Promise.reject(new Error(`RTCRtpTransceiver for ${mediaType} not found`));
         }
-        logger.debug(`Adding ${localTrack} on ${this.pc}`);
+        logger.debug(`${this.pc} Adding ${localTrack}`);
 
         return transceiver.sender.replaceTrack(track);
     }
@@ -301,7 +302,7 @@ export class TPCUtils {
             return Promise.reject(new Error(`RTCRtpTransceiver for ${mediaType} not found`));
         }
 
-        logger.debug(`Removing ${localTrack} on ${this.pc}`);
+        logger.debug(`${this.pc} Removing ${localTrack}`);
 
         return transceiver.sender.replaceTrack(null);
     }
@@ -328,15 +329,13 @@ export class TPCUtils {
                 return Promise.resolve();
             }
 
-            const transceiver = oldTrack.isVideoTrack() && browser.doesVideoMuteByStreamRemove && oldTrack.isMuted()
-                ? this._findTransceiver(mediaType)
-                : this._findTransceiver(mediaType, oldTrack);
+            const transceiver = this._findTransceiver(mediaType, oldTrack);
             const track = newTrack.getTrack();
 
             if (!transceiver) {
                 return Promise.reject(new Error('replace track failed'));
             }
-            logger.debug(`Replacing ${oldTrack} with ${newTrack} on ${this.pc}`);
+            logger.debug(`${this.pc} Replacing ${oldTrack} with ${newTrack}`);
 
             return transceiver.sender.replaceTrack(track)
                 .then(() => {
@@ -359,7 +358,7 @@ export class TPCUtils {
                     // Change the direction on the transceiver to 'recvonly' so that a 'removetrack'
                     // is fired on the associated media stream on the remote peer.
                     if (transceiver) {
-                        transceiver.direction = TransceiverDirection.RECVONLY;
+                        transceiver.direction = MediaDirection.RECVONLY;
                     }
 
                     // Remove the old track from the list of local tracks.
@@ -368,7 +367,6 @@ export class TPCUtils {
                 });
         } else if (newTrack && !oldTrack) {
             return this.addTrackUnmute(newTrack)
-                .then(() => this.setEncodings(newTrack))
                 .then(() => {
                     const mediaType = newTrack.getType();
                     const transceiver = this._findTransceiver(mediaType, newTrack);
@@ -376,15 +374,24 @@ export class TPCUtils {
                     // Change the direction on the transceiver back to 'sendrecv' so that a 'track'
                     // event is fired on the remote peer.
                     if (transceiver) {
-                        transceiver.direction = TransceiverDirection.SENDRECV;
+                        transceiver.direction = MediaDirection.SENDRECV;
                     }
 
-                    // Add the new track to the list of local tracks.
-                    this.pc.localTracks.set(newTrack.rtcId, newTrack);
+                    // Avoid configuring the encodings on Chromium/Safari until simulcast is configured
+                    // for the newly added track using SDP munging which happens during the renegotiation.
+                    const promise = browser.usesSdpMungingForSimulcast()
+                        ? Promise.resolve()
+                        : this.setEncodings(newTrack);
+
+                    return promise
+                        .then(() => {
+                            // Add the new track to the list of local tracks.
+                            this.pc.localTracks.set(newTrack.rtcId, newTrack);
+                        });
                 });
         }
 
-        logger.info('TPCUtils.replaceTrack called with no new track and no old track');
+        logger.info(`${this.pc} TPCUtils.replaceTrack called with no new track and no old track`);
 
         return Promise.resolve();
     }
@@ -437,17 +444,17 @@ export class TPCUtils {
             .filter(t => t.receiver && t.receiver.track && t.receiver.track.kind === mediaType);
         const localTracks = this.pc.getLocalTracks(mediaType);
 
-        logger.info(`${active ? 'Enabling' : 'Suspending'} ${mediaType} media transfer on ${this.pc}`);
+        logger.info(`${this.pc} ${active ? 'Enabling' : 'Suspending'} ${mediaType} media transfer.`);
         transceivers.forEach((transceiver, idx) => {
             if (active) {
                 // The first transceiver is for the local track and only this one can be set to 'sendrecv'
                 if (idx === 0 && localTracks.length) {
-                    transceiver.direction = TransceiverDirection.SENDRECV;
+                    transceiver.direction = MediaDirection.SENDRECV;
                 } else {
-                    transceiver.direction = TransceiverDirection.RECVONLY;
+                    transceiver.direction = MediaDirection.RECVONLY;
                 }
             } else {
-                transceiver.direction = TransceiverDirection.INACTIVE;
+                transceiver.direction = MediaDirection.INACTIVE;
             }
         });
     }

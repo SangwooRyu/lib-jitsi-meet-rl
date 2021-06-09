@@ -130,11 +130,10 @@ export default class BrowserCapabilities extends BrowserDetection {
      * @returns {boolean}
      */
     supportsCodecPreferences() {
-        return this.usesUnifiedPlan()
-            && Boolean(window.RTCRtpTransceiver
-            && window.RTCRtpTransceiver.setCodecPreferences
+        return Boolean(window.RTCRtpTransceiver
+            && typeof window.RTCRtpTransceiver.setCodecPreferences !== 'undefined'
             && window.RTCRtpReceiver
-            && window.RTCRtpReceiver.getCapabilities)
+            && typeof window.RTCRtpReceiver.getCapabilities !== 'undefined')
 
             // this is not working on Safari because of the following bug
             // https://bugs.webkit.org/show_bug.cgi?id=215567
@@ -199,34 +198,12 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Checks if the browser uses plan B.
-     *
-     * @returns {boolean}
-     */
-    usesPlanB() {
-        return !this.usesUnifiedPlan();
-    }
-
-    /**
      * Checks if the browser uses SDP munging for turning on simulcast.
      *
      * @returns {boolean}
      */
     usesSdpMungingForSimulcast() {
         return this.isChromiumBased() || this.isReactNative() || this.isWebKitBased();
-    }
-
-    /**
-     * Checks if the browser uses unified plan.
-     *
-     * @returns {boolean}
-     */
-    usesUnifiedPlan() {
-        if (this.isFirefox() || this.isWebKitBased()) {
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -294,13 +271,12 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Checks if the browser supports the "sdpSemantics" configuration option.
-     * https://webrtc.org/web-apis/chrome/unified-plan/
+     * Checks if the browser supports unified plan.
      *
      * @returns {boolean}
      */
-    supportsSdpSemantics() {
-        return this.isChromiumBased();
+    supportsUnifiedPlan() {
+        return !this.isReactNative();
     }
 
     /**
