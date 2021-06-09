@@ -431,8 +431,6 @@ export default class RTC extends Listenable {
             this._channel.sendRecvVideoEndpointsMessage(ids);
             this._recvVideoEndpoints = [];
         }
-        
-        return false;
     }
 
     /**
