@@ -1626,29 +1626,22 @@ JitsiConference.prototype._maybeSetSITimeout = function() {
 /**
  * Mutes a participant.
  * @param {string} id The id of the participant to mute.
- * @param {Boolean} mute whether mute or unmute
  */
-JitsiConference.prototype.muteParticipant = function(id, mute) {
+JitsiConference.prototype.muteParticipant = function(id, mediaType) {
+    const muteMediaType = mediaType ? mediaType : MediaType.AUDIO;
+
+    if (muteMediaType !== MediaType.AUDIO && muteMediaType !== MediaType.VIDEO) {
+        logger.error(`Unsupported media type: ${muteMediaType}`);
+
+        return;
+    }
+
     const participant = this.getParticipantById(id);
 
     if (!participant) {
         return;
     }
-    this.room.muteParticipant(participant.getJid(), mute);
-};
-
-/**
- * Mutes a participant video.
- * @param {string} id The id of the participant to mute.
- * @param {Boolean} mute whether mute or unmute
- */
-JitsiConference.prototype.muteParticipantVideo = function(id, mute) {
-    const participant = this.getParticipantById(id);
-
-    if (!participant) {
-        return;
-    }
-    this.room.muteParticipantVideo(participant.getJid(), mute);
+    this.room.muteParticipant(participant.getJid(), true, muteMediaType);
 };
 
 /**
