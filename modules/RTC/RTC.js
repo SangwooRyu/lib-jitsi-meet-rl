@@ -144,14 +144,6 @@ export default class RTC extends Listenable {
          */
         this._selectedEndpoints = null;
 
-        /**
-         * List of current of remote endpoints to not recive video
-         *
-         * @type {Array}
-         * @private
-         */
-        this._recvVideoEndpoints = [];
-
         // The last N change listener.
         this._lastNChangeListener = this._onLastNChanged.bind(this);
 
@@ -271,15 +263,6 @@ export default class RTC extends Listenable {
                 this._channel.sendVideoTypeMessage(this._videoType);
             } catch (error) {
                 logError(error, 'VideoTypeMessage', this._videoType);
-            }
-
-            if (this._recvVideoEndpoints.length) {
-                try {
-                    this._channel.sendRecvVideoEndpointsMessage(this._recvVideoEndpoints);
-                    this._recvVideoEndpoints = [];
-                } catch (error) {
-                    logError(error, 'RecvVideoEndpointMessage', this._recvVideoEndpoints);
-                }
             }
 
             this.removeListener(RTCEvents.DATA_CHANNEL_OPEN, this._channelOpenListener);
@@ -411,25 +394,6 @@ export default class RTC extends Listenable {
 
         if (this._channel && this._channel.isOpen()) {
             this._channel.sendSelectedEndpointsMessage(ids);
-        }
-    }
-
-    /**
-     * Request jvb to only send these remote endpoints videos.
-     * If there is no channel we store it and send it
-     * through the channel once it is created.
-     *
-     * @param {Array<string>} ids - The user ids.
-     * @throws NetworkError or InvalidStateError or Error if the operation
-     * fails.
-     * @returns {void}
-     */
-    recvVideoEndpoints(ids) {
-        this._recvVideoEndpoints = ids;
-
-        if (this._channel && this._channel.isOpen()) {
-            this._channel.sendRecvVideoEndpointsMessage(ids);
-            this._recvVideoEndpoints = [];
         }
     }
 

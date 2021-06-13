@@ -217,26 +217,6 @@ export default class BridgeChannel {
     }
 
     /**
-     * Sends a "Receive video endpoints changed" message via the channel,
-     * which disable receiving the videos of endpoints
-     *
-     * @param {Array<string>} endpointIds - The ids of the in viewport endpoints.
-     * @throws NetworkError or InvalidStateError from RTCDataChannel#send (@see
-     * {@link https://developer.mozilla.org/docs/Web/API/RTCDataChannel/send})
-     * or from WebSocket#send or Error with "No opened channel" message.
-     */
-    sendRecvVideoEndpointsMessage(endpointIds) {
-        logger.log(
-            'sending video endpoints to receive notification to the bridge',
-            endpointIds);
-
-        this._send({
-            colibriClass: 'RecvVideoEndpointsChangedEvent',
-            recvVideoEndpoints: endpointIds
-        });
-    }
-
-    /**
      * Sends a "selected endpoints changed" message via the channel.
      *
      * @param {Array<string>} endpointIds - The ids of the selected endpoints.
