@@ -90,7 +90,11 @@ export class SendVideoController {
      */
     selectSendMaxFrameHeight() {
         const activeMediaSession = this.conference._getActiveMediaSession();
-        const remoteRecvMaxFrameHeight = activeMediaSession && activeMediaSession.getRemoteRecvMaxFrameHeight();
+        const remoteRecvMaxFrameHeight = activeMediaSession
+            ? activeMediaSession.isP2P
+                ? activeMediaSession.getRemoteRecvMaxFrameHeight()
+                : this.layerSuspensionEnabled ? this._senderVideoConstraints?.idealHeight : undefined
+            : undefined;
         let minSendFrameHeightConfig = APP.store.getState()['features/base/config'].minSendFrameHeight;
 
         let heightToSend = 0;
