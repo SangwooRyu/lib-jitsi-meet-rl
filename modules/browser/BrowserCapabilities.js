@@ -33,7 +33,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * strategy or <tt>false</tt> otherwise.
      */
     doesVideoMuteByStreamRemove() {
-        return this.isChromiumBased() || this.isSafari();
+        return this.isChromiumBased() || this.isWebKitBased();
     }
 
     /**
@@ -82,7 +82,7 @@ export default class BrowserCapabilities extends BrowserDetection {
         return (this.isChromiumBased() && this._getChromiumBasedVersion() >= MIN_REQUIRED_CHROME_VERSION)
             || this.isFirefox()
             || this.isReactNative()
-            || (this.isSafari() && !this.isVersionLessThan('12.1'));
+            || this.isWebKitBased();
     }
 
     /**
@@ -102,7 +102,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * otherwise.
      */
     supportsVideoMuteOnConnInterrupted() {
-        return this.isChromiumBased() || this.isReactNative() || this.isSafari();
+        return this.isChromiumBased() || this.isReactNative() || this.isWebKitBased();
     }
 
     /**
@@ -113,7 +113,7 @@ export default class BrowserCapabilities extends BrowserDetection {
     supportsBandwidthStatistics() {
         // FIXME bandwidth stats are currently not implemented for FF on our
         // side, but not sure if not possible ?
-        return !this.isFirefox() && !this.isSafari();
+        return !this.isFirefox() && !this.isWebKitBased();
     }
 
     /**
@@ -128,7 +128,7 @@ export default class BrowserCapabilities extends BrowserDetection {
 
             // this is not working on Safari because of the following bug
             // https://bugs.webkit.org/show_bug.cgi?id=215567
-            && !this.isSafari();
+            && !this.isWebKitBased();
     }
 
     /**
@@ -146,7 +146,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * candidates through the legacy getStats() API.
      */
     supportsLocalCandidateRttStatistics() {
-        return this.isChromiumBased() || this.isReactNative() || this.isSafari();
+        return this.isChromiumBased() || this.isReactNative() || this.isWebKitBased();
     }
 
     /**
@@ -199,7 +199,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * @returns {boolean}
      */
     usesSdpMungingForSimulcast() {
-        return this.isChromiumBased() || this.isReactNative() || this.isSafari();
+        return this.isChromiumBased() || this.isReactNative() || this.isWebKitBased();
     }
 
     /**
@@ -208,14 +208,8 @@ export default class BrowserCapabilities extends BrowserDetection {
      * @returns {boolean}
      */
     usesUnifiedPlan() {
-        if (this.isFirefox()) {
+        if (this.isFirefox() || this.isWebKitBased()) {
             return true;
-        }
-
-        if (this.isSafari() && typeof window.RTCRtpTransceiver !== 'undefined') {
-            // https://trac.webkit.org/changeset/236144/webkit/trunk/LayoutTests/webrtc/video-addLegacyTransceiver.html
-            // eslint-disable-next-line no-undef
-            return Object.keys(RTCRtpTransceiver.prototype).indexOf('currentDirection') > -1;
         }
 
         return false;
@@ -230,7 +224,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * @returns {boolean}
      */
     usesNewGumFlow() {
-        if (this.isChromiumBased() || this.isFirefox() || this.isSafari()) {
+        if (this.isChromiumBased() || this.isFirefox() || this.isWebKitBased()) {
             return true;
         }
 
