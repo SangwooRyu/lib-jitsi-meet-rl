@@ -519,10 +519,12 @@ JitsiConference.prototype._init = function(options = {}) {
 /**
  * Joins the conference.
  * @param password {string} the password
+ * @param replaceParticipant {boolean} whether the current join replaces
+ * an existing participant with same jwt from the meeting.
  */
-JitsiConference.prototype.join = function(password) {
+JitsiConference.prototype.join = function(password, replaceParticipant = false) {
     if (this.room) {
-        this.room.join(password).then(() => this._maybeSetSITimeout());
+        this.room.join(password, replaceParticipant).then(() => this._maybeSetSITimeout());
     }
 };
 
@@ -1044,6 +1046,14 @@ JitsiConference.prototype._fireMuteChangeEvent = function(track) {
         actorParticipant = this.participants[actorId];
     }
 
+    // Send the video type message to the bridge if the track is not removed/added to the pc as part of
+    // the mute/unmute operation. This currently happens only on Firefox.
+    if (track.isVideoTrack() && !browser.doesVideoMuteByStreamRemove()) {
+        const videoType = track.isMuted() ? VideoType.NONE : track.getVideoType();
+
+        this.rtc.setVideoType(videoType);
+    }
+
     this.eventEmitter.emit(JitsiConferenceEvents.TRACK_MUTE_CHANGED, track, actorParticipant);
 };
 
@@ -1127,7 +1137,7 @@ JitsiConference.prototype.replaceTrack = function(oldTrack, newTrack) {
             if (newTrack) {
                 // Now handle the addition of the newTrack at the JitsiConference level
                 this._setupNewTrack(newTrack);
-                newTrack.isVideoTrack() && this.rtc.setVideoType(newTrack.videoType);
+                newTrack.isVideoTrack() && this.rtc.setVideoType(newTrack.getVideoType());
             } else {
                 oldTrack && oldTrack.isVideoTrack() && this.rtc.setVideoType(VideoType.NONE);
             }
@@ -1251,7 +1261,7 @@ JitsiConference.prototype._addLocalTrackAsUnmute = function(track) {
     return Promise.allSettled(addAsUnmutePromises)
         .then(() => {
             // Signal the video type to the bridge.
-            track.isVideoTrack() && this.rtc.setVideoType(track.videoType);
+            track.isVideoTrack() && this.rtc.setVideoType(track.getVideoType());
         });
 };
 
@@ -1667,9 +1677,11 @@ JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
  * @param botType the member botType, if any
  * @param fullJid the member full jid, if any
  * @param features the member botType, if any
+ * @param isReplaceParticipant whether this join replaces a participant with
+ * the same jwt.
  */
 JitsiConference.prototype.onMemberJoined = function(
-        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features) {
+        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, isReplaceParticipant) {
     const id = Strophe.getResourceFromJid(jid);
 
     if (id === 'focus' || this.myUserId() === id) {
@@ -1682,6 +1694,7 @@ JitsiConference.prototype.onMemberJoined = function(
     participant.setRole(role);
     participant.setBotType(botType);
     participant.setFeatures(features);
+    participant.setIsReplacing(isReplaceParticipant);
 
     this.participants[id] = participant;
     this.eventEmitter.emit(
@@ -1810,6 +1823,8 @@ JitsiConference.prototype.onMemberLeft = function(jid) {
         });
 };
 
+/* eslint-disable max-params */
+
 /**
  * Designates an event indicating that we were kicked from the XMPP MUC.
  * @param {boolean} isSelfPresence - whether it is for local participant
@@ -1819,8 +1834,15 @@ JitsiConference.prototype.onMemberLeft = function(jid) {
  * @param {string?} kickedParticipantId - when it is not a kick for local participant,
  * this is the id of the participant which was kicked.
  * @param {string} reason - reason of the participant to kick
+ * @param {boolean?} isReplaceParticipant - whether this is a server initiated kick in order
+ * to replace it with a participant with same jwt.
  */
-JitsiConference.prototype.onMemberKicked = function(isSelfPresence, actorId, kickedParticipantId, reason) {
+JitsiConference.prototype.onMemberKicked = function(
+        isSelfPresence,
+        actorId,
+        kickedParticipantId,
+        reason,
+        isReplaceParticipant) {
     // This check which be true when we kick someone else. With the introduction of lobby
     // the ChatRoom KICKED event is now also emitted for ourselves (the kicker) so we want to
     // avoid emitting an event where `undefined` kicked someone.
@@ -1832,13 +1854,15 @@ JitsiConference.prototype.onMemberKicked = function(isSelfPresence, actorId, kic
 
     if (isSelfPresence) {
         this.eventEmitter.emit(
-            JitsiConferenceEvents.KICKED, actorParticipant, reason);
+            JitsiConferenceEvents.KICKED, actorParticipant, reason, isReplaceParticipant);
 
         this.leave();
 
         return;
     }
     const kickedParticipant = this.participants[kickedParticipantId];
+
+    kickedParticipant.setIsReplaced(isReplaceParticipant);
 
     this.eventEmitter.emit(
         JitsiConferenceEvents.PARTICIPANT_KICKED, actorParticipant, kickedParticipant, reason);
