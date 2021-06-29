@@ -969,16 +969,23 @@ export default class ChatRoom extends Listenable {
      * @param message
      * @param elementName
      */
-    sendMessage(message, elementName) {
+    sendMessage(message, elementName, nickname) {
         const msg = $msg({ to: this.roomjid,
             type: 'groupchat' });
         // We are adding the message in a packet extension. If this element
         // is different from 'body', we add a custom namespace.
         // e.g. for 'json-message' extension of message stanza.
         if (elementName === 'body') {
-            msg.c(elementName, {}, message);
+            msg.c(elementName, message).up();
         } else {
-            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message);
+            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message)
+                .up();
+        }
+        if (nickname) {
+            msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })
+                .t(nickname)
+                .up()
+                .up();
         }
 
         this.connection.send(msg);
@@ -991,8 +998,9 @@ export default class ChatRoom extends Listenable {
      * @param id id/muc resource of the receiver
      * @param message
      * @param elementName
+     * @param nickname
      */
-    sendPrivateMessage(id, message, elementName) {
+    sendPrivateMessage(id, message, elementName, nickname) {
         const msg = $msg({ to: `${this.roomjid}/${id}`,
             type: 'chat' });
 
@@ -1004,6 +1012,12 @@ export default class ChatRoom extends Listenable {
         } else {
             msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message)
                 .up();
+        }
+        if (nickname) {	
+            msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })	
+                .t(nickname)	
+                .up()	
+                .up();	
         }
 
         this.connection.send(msg);
@@ -1192,6 +1206,10 @@ export default class ChatRoom extends Listenable {
      * @param from
      */
     onMessage(msg, from) {
+        const nick	
+            = $(msg).find('>nick[xmlns="http://jabber.org/protocol/nick"]')	
+                .text()	
+            || Strophe.getResourceFromJid(from);
         const type = msg.getAttribute('type');
 
         if (type === 'error') {
@@ -1304,10 +1322,10 @@ export default class ChatRoom extends Listenable {
         if (txt) {
             if (type === 'chat') {
                 this.eventEmitter.emit(XMPPEvents.PRIVATE_MESSAGE_RECEIVED,
-                        from, txt, this.myroomjid, stamp);
+                        from, nick, txt, this.myroomjid, stamp);
             } else if (type === 'groupchat') {
                 this.eventEmitter.emit(XMPPEvents.MESSAGE_RECEIVED,
-                        from, txt, this.myroomjid, stamp);
+                        from, nick, txt, this.myroomjid, stamp);
             }
         }
     }

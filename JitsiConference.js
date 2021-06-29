@@ -858,7 +858,8 @@ JitsiConference.prototype.removeCommandListener = function(command, handler) {
 JitsiConference.prototype.sendTextMessage = function(
         message, elementName = 'body') {
     if (this.room) {
-        this.room.sendMessage(message, elementName);
+        const displayName = (this.room.getFromPresence('nick') || {}).value;
+        this.room.sendMessage(message, elementName, displayName);
     }
 };
 

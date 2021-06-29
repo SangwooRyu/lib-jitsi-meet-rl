@@ -409,19 +409,19 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
         XMPPEvents.MESSAGE_RECEIVED,
 
         // eslint-disable-next-line max-params
-        (jid, txt, myJid, ts) => {
+        (jid, displayName, txt, myJid, ts) => {
             const id = Strophe.getResourceFromJid(jid);
 
             conference.eventEmitter.emit(
                 JitsiConferenceEvents.MESSAGE_RECEIVED,
-                id, txt, ts);
+                id, txt, ts, displayName);
         });
 
     chatRoom.addListener(
         XMPPEvents.PRIVATE_MESSAGE_RECEIVED,
 
         // eslint-disable-next-line max-params
-        (jid, txt, myJid, ts) => {
+        (jid, displayName, txt, myJid, ts) => {
             const id = Strophe.getResourceFromJid(jid);
 
             conference.eventEmitter.emit(
