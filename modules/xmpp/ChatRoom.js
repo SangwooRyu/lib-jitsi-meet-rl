@@ -336,15 +336,17 @@ export default class ChatRoom extends Listenable {
             // convert userDeviceAccessDisabledStr to boolean
             let userDeviceAccessDisabledFlag; 
             
-            // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
-            if (userDeviceAccessDisabledStr.text() === "true") {
+            // ejabberd is explicitly passing the values of string "1" or "0" for userDeviceAccessDisabledStr string
+            // these are for incoming new participants that use discoRoomInfo and get the values for the fields from ejabberd
+
+            if (userDeviceAccessDisabledStr.text() === "1") {
                 userDeviceAccessDisabledFlag = true;
                 // emit XMPP event to broadcast the value to all participants
+                // we want to emit toast message to participants only if the user device access is disabled (when first joining)
                 this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
-            } else if (userDeviceAccessDisabledStr.text() === "false") {
+            } else if (userDeviceAccessDisabledStr.text() == "0") {
                 userDeviceAccessDisabledFlag = false;
-                // emit XMPP event to broadcast the value to all participants
-                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
+                // since device access is not disabled here, we don't emit any toast message
             }
         
 
@@ -1257,12 +1259,13 @@ export default class ChatRoom extends Listenable {
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
         let userDeviceAccessFlag;
 
-        // improvised check condition; we want to check for values "true" or "false" only and assign accordingly
+        // improvised check condition; we want to check for values "true" or "false" only and assign accordingly in onMessage which is for
+        // already existing participants
         if(userDeviceAccessStr === "true") {
             userDeviceAccessFlag = true;
             // emit XMPP event to broadcast the value to all participants
             this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
-        } else if(userDeviceAccessStr == "false") {
+        } else if(userDeviceAccessStr === "false") {
             userDeviceAccessFlag = false;
             // emit XMPP event to broadcast the value to all participants
             this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
