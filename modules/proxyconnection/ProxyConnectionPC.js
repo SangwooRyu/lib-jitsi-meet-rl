@@ -185,7 +185,7 @@ export default class ProxyConnectionPC {
          *
          * @type {Object}
          */
-        const iceConfigStub = {
+        let iceConfigStub = {
             iceServers: DEFAULT_STUN_SERVERS,
             ...this._options.iceConfig
         };
