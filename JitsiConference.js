@@ -67,8 +67,7 @@ import {
     createP2PEvent
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
-import ParticipantLog from './modules/plog/plog'
-import ChatRoom from './modules/xmpp/ChatRoom';
+
 const logger = getLogger(__filename);
 
 /**
@@ -431,8 +430,6 @@ JitsiConference.prototype._init = function(options = {}) {
             this.statistics.attachLongTasksStats(this);
         }
     }
-
-    this.plogs = new ParticipantLog(this, this.xmpp);
 
     this.eventManager.setupChatRoomListeners();
 
@@ -888,6 +885,7 @@ JitsiConference.prototype.sendCommand = function(name, values) {
     } else {
         logger.warn('Not sending a command, room not initialized.');
     }
+
 };
 
 /**
@@ -1383,7 +1381,7 @@ JitsiConference.prototype.selectParticipants = function(participantIds) {
         throw new Error('Invalid argument; participantIds must be an array.');
     }
 
-    this.rtc.selectEndpoints(participantIds);
+    this.receiveVideoController.selectEndpoints(participantIds);
 };
 
 /**
@@ -1476,16 +1474,6 @@ JitsiConference.prototype.getParticipantCount
  */
 JitsiConference.prototype.getParticipantById = function(id) {
     return this.participants[id];
-};
-
-/**
- * @returns {JitsiParticipant} the participant in this conference with the
- * specified statsID (or undefined if there isn't one).
- * @param statsID the id of the participant.
- */
-JitsiConference.prototype.getParticipantByStatsID = function(statsID) {
-    const participants = this.getParticipants();
-    return participants.find(p => p._statsID === statsID);
 };
 
 /**
@@ -1861,6 +1849,7 @@ JitsiConference.prototype.onMemberKicked = function(
 
         return;
     }
+
     const kickedParticipant = this.participants[kickedParticipantId];
 
     kickedParticipant.setIsReplaced(isReplaceParticipant);
@@ -2185,6 +2174,10 @@ JitsiConference.prototype._acceptJvbIncomingCall = function(
             },
             localTracks
         );
+
+        // Enable or disable simulcast for plan-b screensharing based on the capture fps if it is set through the UI.
+        this._desktopSharingFrameRate
+            && jingleSession.peerconnection.setDesktopSharingFrameRate(this._desktopSharingFrameRate);
 
         // Start callstats as soon as peerconnection is initialized,
         // do not wait for XMPPEvents.PEERCONNECTION_READY, as it may never
@@ -2575,7 +2568,7 @@ JitsiConference.prototype.isStartVideoMuted = function() {
  * Returns measured connectionTimes.
  */
 JitsiConference.prototype.getConnectionTimes = function() {
-    return this.room?.connectionTimes;
+    return this.room.connectionTimes;
 };
 
 /**
@@ -3503,6 +3496,29 @@ JitsiConference.prototype.getP2PConnectionState = function() {
     return null;
 };
 
+/**
+ * Configures the peerconnection so that a given framre rate can be achieved for desktop share.
+ *
+ * @param {number} maxFps The capture framerate to be used for desktop tracks.
+ * @returns {boolean} true if the operation is successful, false otherwise.
+ */
+JitsiConference.prototype.setDesktopSharingFrameRate = function(maxFps) {
+    if (typeof maxFps !== 'number' || isNaN(maxFps)) {
+        logger.error(`Invalid value ${maxFps} specified for desktop capture frame rate`);
+
+        return false;
+    }
+
+    this._desktopSharingFrameRate = maxFps;
+
+    // Enable or disable simulcast for plan-b screensharing based on the capture fps.
+    this.jvbJingleSession && this.jvbJingleSession.peerconnection.setDesktopSharingFrameRate(maxFps);
+
+    // Set the capture rate for desktop sharing.
+    this.rtc.setDesktopSharingFrameRate(maxFps);
+
+    return true;
+};
 
 /**
  * Manually starts new P2P session (should be used only in the tests).
@@ -3534,10 +3550,6 @@ JitsiConference.prototype.stopP2PSession = function() {
  */
 JitsiConference.prototype.getSpeakerStats = function() {
     return this.speakerStatsCollector.getStats();
-};
-
-JitsiConference.prototype.getSpeakerStatsIdentity = function() {
-    return this.speakerStatsCollector.getStatsIdentity();
 };
 
 /**
@@ -3790,14 +3802,6 @@ JitsiConference.prototype.lobbyApproveAccess = function(id) {
         this.room.getLobby().approveAccess(id);
     }
 };
-
-JitsiConference.prototype.getParticipantLog = function(){
-    return this.plogs.getLog();
-}
-
-JitsiConference.prototype.getParticipantLogIdentity = function(){
-    return this.plogs.getLogIdentity();
-}
 
 /**
  * Share a file into the conference meeting
