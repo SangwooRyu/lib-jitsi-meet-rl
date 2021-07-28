@@ -1518,6 +1518,19 @@ JitsiConference.prototype.revokeOwner = function(id) {
     }
 };
 
+/**
+ * Revoke moderator rights of an existing moderator so that the particpant is now
+ * only a local participant i.e. role = 'participant'. We do this alternatively by
+ * setting affiliation = 'member' which is equivalent to setting role as participant
+ * @param {string} id id of the participant to revoke moderator rights of
+ */
+JitsiConference.prototype.revokeModeratorRights = function(id) {
+    console.log("Reached revokeModeratorRights function inside JitsiConference");
+    const participant = this.getParticipantById(id);
+    const toBeRole = 'member';
+    this.room.setAffiliation(participant.getJid(), toBeRole);
+}
+
 
 /**
  * Kick participant from this conference.
