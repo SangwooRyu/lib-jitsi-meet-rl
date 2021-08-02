@@ -22,7 +22,6 @@ export default class MucConnectionPlugin extends ConnectionPluginListenable {
         super();
         this.xmpp = xmpp;
         this.rooms = {};
-        console.log('MucConnectionPlugin:constructor');
     }
 
     /**
@@ -45,8 +44,6 @@ export default class MucConnectionPlugin extends ConnectionPluginListenable {
             'http://jitsi.org/jitmeet/audio', 'iq', 'set', null, null);
         this.connection.addHandler(this.onMuteVideo.bind(this),
             'http://jitsi.org/jitmeet/video', 'iq', 'set', null, null);
-
-        console.log('MucConnectionPlugin:init');
     }
 
     /**
@@ -170,8 +167,6 @@ export default class MucConnectionPlugin extends ConnectionPluginListenable {
     onMute(iq) {
         const from = iq.getAttribute('from');
         const room = this.rooms[Strophe.getBareJidFromJid(from)];
-
-        console.log('MucConnectionPlugin:onMute', iq);
 
         // Returning false would result in the listener being deregistered by Strophe
         if (!room) {
