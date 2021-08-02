@@ -2086,6 +2086,7 @@ export default class ChatRoom extends Listenable {
     onMute(iq) {
         const from = iq.getAttribute('from');
 
+        console.log('ChatRoom:onMute', iq);
         // if (from !== this.focusMucJid) {
         //     logger.warn('Ignored mute from non focus peer');
 
