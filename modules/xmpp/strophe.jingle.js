@@ -150,7 +150,7 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
                 `Marking session from ${fromJid
                 } as ${isP2P ? '' : '*not*'} P2P`);
 
-            const iceConfig = isP2P ? this.p2pIceConfig : this.jvbIceConfig;
+            let iceConfig = isP2P ? this.p2pIceConfig : this.jvbIceConfig;
 
             sess
                 = new JingleSessionPC(
