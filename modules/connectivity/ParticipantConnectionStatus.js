@@ -17,7 +17,7 @@ const logger = getLogger(__filename);
  *
  * @type {number}
  */
-const DEFAULT_NOT_IN_LAST_N_TIMEOUT = 2000;
+const DEFAULT_NOT_IN_LAST_N_TIMEOUT = 500;
 
 /**
  * Default value of 2000 milliseconds for
