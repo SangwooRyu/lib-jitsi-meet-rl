@@ -144,6 +144,12 @@ export default class RTC extends Listenable {
          */
         this._selectedEndpoints = null;
 
+        /*
+         * for backword compatibility
+         * TODO: remove after upgrade v2.0
+         */
+        this._recvVideoEndpoints = null;
+
         // The last N change listener.
         this._lastNChangeListener = this._onLastNChanged.bind(this);
 
@@ -256,6 +262,13 @@ export default class RTC extends Listenable {
                     this._channel.sendSetLastNMessage(this._lastN);
                 } catch (error) {
                     logError(error, 'LastNChangedEvent', this._lastN);
+                }
+            }
+            if (this._recvVideoEndpoints) {
+                try {
+                    this._channel.sendRecvVideoEndpointsMessage(this._recvVideoEndpoints);
+                } catch (error) {
+                    logError(error, 'RecvVideoEndpointsEvent', this._recvVideoEndpoints);
                 }
             }
             try {
@@ -402,6 +415,19 @@ export default class RTC extends Listenable {
 
         if (this._channel && this._channel.isOpen()) {
             this._channel.sendSelectedEndpointsMessage(ids);
+        }
+    }
+
+    /*
+     * for backword compatibility
+     * TODO: remove after upgrade v2.0
+     */
+    recvVideoEndpoints(ids) {
+        this._recvVideoEndpoints = ids;
+
+        if (this._channel && this._channel.isOpen()) {
+            this._channel.sendRecvVideoEndpointsMessage(ids);
+            this._recvVideoEndpoints = null;
         }
     }
 

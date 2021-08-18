@@ -216,6 +216,21 @@ export default class BridgeChannel {
         });
     }
 
+    /*
+     * for backword compatibility
+     * TODO: remove after upgrade v2.0
+     */
+    sendRecvVideoEndpointsMessage(endpointIds) {
+        logger.log(
+            'sending video endpoints to receive notification to the bridge',
+            endpointIds);
+
+        this._send({
+            colibriClass: 'RecvVideoEndpointsChangedEvent',
+            recvVideoEndpoints: endpointIds
+        });
+    }
+
     /**
      * Sends a "selected endpoints changed" message via the channel.
      *

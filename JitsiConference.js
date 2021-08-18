@@ -1406,6 +1406,18 @@ JitsiConference.prototype.selectParticipants = function(participantIds) {
     this.receiveVideoController.selectEndpoints(participantIds);
 };
 
+/*
+ * for backword compatibility
+ * TODO: remove after upgrade v2.0
+ */
+JitsiConference.prototype.recvVideoParticipants = function (participantIds) {
+    if (!Array.isArray(participantIds)) {
+        throw new Error('Invalid argument; participantIds must be an array.');
+    }
+
+    this.rtc.recvVideoEndpoints(participantIds);
+};
+
 /**
  * Obtains the current value for "lastN". See {@link setLastN} for more info.
  * @returns {number}
