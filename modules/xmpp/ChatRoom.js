@@ -980,8 +980,7 @@ export default class ChatRoom extends Listenable {
         if (elementName === 'body') {
             msg.c(elementName, message).up();
         } else {
-            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message)
-                .up();
+            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message);
         }
         if (nickname) {
             msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })
@@ -1012,8 +1011,7 @@ export default class ChatRoom extends Listenable {
         if (elementName === 'body') {
             msg.c(elementName, message).up();
         } else {
-            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message)
-                .up();
+            msg.c(elementName, { xmlns: 'http://jitsi.org/jitmeet' }, message);
         }
         if (nickname) {	
             msg.c('nick', { xmlns: 'http://jabber.org/protocol/nick' })	
