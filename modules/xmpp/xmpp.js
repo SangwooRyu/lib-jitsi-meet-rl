@@ -175,7 +175,7 @@ export default class XMPP extends Listenable {
 
         this._initStrophePlugins();
 
-        this.caps = new Caps(this.connection, this.options.clientNode);
+        this.caps = new Caps(this.connection, /* clientNode */ 'https://jitsi.org/jitsi-meet');
 
         // Initialize features advertised in disco-info
         this.initFeaturesList();
@@ -548,7 +548,7 @@ export default class XMPP extends Listenable {
         // check for shard name in identities
         identities.forEach(i => {
             if (i.type === 'shard') {
-                this.options.deploymentInfo.shard = i.name;
+                this.options.deploymentInfo.shard = this.connection.shard = i.name;
             }
         });
 
