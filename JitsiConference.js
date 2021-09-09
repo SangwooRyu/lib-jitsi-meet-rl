@@ -617,6 +617,8 @@ JitsiConference.prototype.leave = function() {
 
     this._delayedIceFailed && this._delayedIceFailed.cancel();
 
+    this._maybeClearSITimeout();
+
     // Close both JVb and P2P JingleSessions
     if (this.jvbJingleSession) {
         this.jvbJingleSession.close();
@@ -1093,8 +1095,10 @@ JitsiConference.prototype._fireMuteChangeEvent = function(track) {
  * @returns {Array<JitsiLocalTrack>} - list of local tracks that are unmuted.
  */
 JitsiConference.prototype._getInitialLocalTracks = function() {
+    // Always add the audio track on mobile Safari because of a known issue where audio playout doesn't happen
+    // if the user joins audio and video muted.
     return this.getLocalTracks()
-        .filter(track => (track.getType() === MediaType.AUDIO && !this.isStartAudioMuted())
+        .filter(track => (track.getType() === MediaType.AUDIO && (!this.isStartAudioMuted() || browser.isIosBrowser()))
         || (track.getType() === MediaType.VIDEO && !this.isStartVideoMuted()));
 };
 
@@ -1165,7 +1169,7 @@ JitsiConference.prototype.replaceTrack = function(oldTrack, newTrack) {
                 this._sendBridgeVideoTypeMessage(newTrack);
             }
 
-            if (this.isMutedByFocus || this.isVideoMutedByFocus) {
+            if (newTrack !== null && (this.isMutedByFocus || this.isVideoMutedByFocus)) {
                 this._fireMuteChangeEvent(newTrack);
             }
 
@@ -1843,8 +1847,10 @@ JitsiConference.prototype.onMemberLeft = function(jid) {
                 this.eventEmitter.emit(JitsiConferenceEvents.USER_LEFT, id, participant);
             }
 
-            this._maybeStartOrStopP2P(true /* triggered by user left event */);
-            this._maybeClearSITimeout();
+            if (this.room !== null) { // Skip if we have left the room already.
+                this._maybeStartOrStopP2P(true /* triggered by user left event */);
+                this._maybeClearSITimeout();
+            }
         });
 };
 
