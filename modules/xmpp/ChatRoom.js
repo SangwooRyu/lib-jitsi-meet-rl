@@ -2176,7 +2176,11 @@ export default class ChatRoom extends Listenable {
      * rejected.
      */
     leave() {
-        return new Promise((resolve, reject) => {
+        const promises = [];
+
+        this.lobby?.lobbyRoom && promises.push(this.lobby.leave());
+
+        promises.push(new Promise((resolve, reject) => {
             const timeout = setTimeout(() => onMucLeft(true), 5000);
             const eventEmitter = this.eventEmitter;
 
@@ -2199,7 +2203,9 @@ export default class ChatRoom extends Listenable {
             }
             eventEmitter.on(XMPPEvents.MUC_LEFT, onMucLeft);
             this.doLeave();
-        });
+        }));
+
+        return Promise.all(promises);
     }
 }
 
