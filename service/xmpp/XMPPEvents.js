@@ -343,9 +343,11 @@ const XMPPEvents = {
 
     NOTICE_MESSAGE: 'xmpp.notice_message',
 
-    // start of added portion
-    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled'
-    // end of added portion
+    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled',
+
+    NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
+
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished'
 };
 
 module.exports = XMPPEvents;

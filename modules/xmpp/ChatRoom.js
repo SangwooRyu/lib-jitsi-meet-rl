@@ -1253,6 +1253,24 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        // get the random selection status
+        let randomSelectionStatus = $(msg).find('>randomselection').text();
+
+        // emit an event to all participants in the chatroom for each randomSelectionStatus
+        if (randomSelectionStatus === "started") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (randomSelectionStatus === "finished") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
         let userDeviceAccessFlag;

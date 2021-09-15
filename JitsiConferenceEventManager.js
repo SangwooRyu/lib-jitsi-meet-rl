@@ -166,6 +166,12 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
         JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED,
+        JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_STARTED);
+
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED,
+        JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_FINISHED);
+
     this.chatRoomForwarder.forward(XMPPEvents.MUC_JOINED,
         JitsiConferenceEvents.CONFERENCE_JOINED);
 

@@ -1103,6 +1103,17 @@ JitsiConference.prototype._getInitialLocalTracks = function() {
 };
 
 /**
+ * Function that is invoked when a moderator starts the random selection feature.
+ * Used to notify participants that the random selection process has started.
+ */
+JitsiConference.prototype.startRandomSelection = function(initiator) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {started}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("started", 'randomselection', initiator);
+}
+
+/**
  * Clear JitsiLocalTrack properties and listeners.
  * @param track the JitsiLocalTrack object.
  */
