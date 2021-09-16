@@ -1271,6 +1271,24 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        // get the random timer start notification
+        let timerStatus = $(msg).find('>timer').text();
+
+        // emit an event to all participants in the chatroom.
+        if (timerStatus === "started") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (timerStatus === "finished") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_FINISHED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
         let userDeviceAccessFlag;

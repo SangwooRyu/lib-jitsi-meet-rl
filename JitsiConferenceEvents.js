@@ -397,6 +397,12 @@ export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selecti
 
 export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
 
+// Notifies timer started.
+export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
+
+// Notifies timer finished.
+export const NOTIFY_TIMER_FINISHED = 'conference.notify_timer_finished';
+
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';

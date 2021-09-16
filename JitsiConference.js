@@ -1114,6 +1114,20 @@ JitsiConference.prototype.startRandomSelection = function(initiator) {
 }
 
 /**
+ * Function that is invoked when a moderator starts tiemr feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+JitsiConference.prototype.startTimer = function(initiator) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerStarted}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("started", 'timer', initiator);
+}
+
+
+/**
  * Clear JitsiLocalTrack properties and listeners.
  * @param track the JitsiLocalTrack object.
  */

@@ -345,9 +345,17 @@ const XMPPEvents = {
 
     USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled',
 
+    // Designates an event indicating that random-selection has started.
     NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
 
-    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished'
+    // Designates an event indicating that random-selection has finished.
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    // Designates an event indicating that timer has started.
+    NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
+
+    // Designates an event indicating that timer has finished.
+    NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished'
 };
 
 module.exports = XMPPEvents;
