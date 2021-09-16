@@ -1114,6 +1114,17 @@ JitsiConference.prototype.startRandomSelection = function(initiator) {
 }
 
 /**
+ * Function that is invoked to finalize the selection of participant from
+ * random selection procedure.
+ */
+JitsiConference.prototype.finalizeRandomSelection = function(selectedParticipantDisplayName) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {finished}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("finished", 'randomselection', selectedParticipantDisplayName);
+}
+
+/**
  * Clear JitsiLocalTrack properties and listeners.
  * @param track the JitsiLocalTrack object.
  */
