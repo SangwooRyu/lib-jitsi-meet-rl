@@ -355,7 +355,11 @@ const XMPPEvents = {
     NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
 
     // Designates an event indicating that timer has finished.
-    NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished'
+    NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
+
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
 };
 
 module.exports = XMPPEvents;

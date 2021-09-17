@@ -1259,7 +1259,19 @@ export default class ChatRoom extends Listenable {
         // emit an event to all participants in the chatroom for each randomSelectionStatus
         if (randomSelectionStatus === "started") {
             try {
+                // emit an event that notifies that random selection has been initiated
                 this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED, nick);
+
+                // emit an event the show countdown before random selection is completed
+                // only required in the case when random selection is started
+
+                // we assign a fixed value of 5, which is the remaining seconds before countdown ends
+                const countdownRemained = 5;
+
+                // this status flag will determine whether or not to begin count down for timer
+                const startCountdown = true;
+
+                this.eventEmitter.emit(XMPPEvents.RANDOM_SELECTION_COUNTDOWN, countdownRemained, startCountdown); 
             } catch(err) {
                 console.error(err);
             }
