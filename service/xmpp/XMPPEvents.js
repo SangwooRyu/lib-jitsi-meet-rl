@@ -347,7 +347,9 @@ const XMPPEvents = {
 
     NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
 
-    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished'
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
 };
 
 module.exports = XMPPEvents;

@@ -395,6 +395,8 @@ export const USER_DEVICE_ACCESS_DISABLED = 'conference.user_device_access_disabl
 
 export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selection_started';
 
+export const RANDOM_SELECTION_COUNTDOWN = 'conference.random_selection_countdown';
+
 export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
 
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
