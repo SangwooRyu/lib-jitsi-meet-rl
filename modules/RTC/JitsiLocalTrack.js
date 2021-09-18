@@ -22,6 +22,7 @@ import {
     createNoDataFromSourceEvent
 } from '../../service/statistics/AnalyticsEvents';
 import browser from '../browser';
+import { AdaptiveFramerate } from '../qualitycontrol/AdaptiveFramerate';
 import Statistics from '../statistics/statistics';
 
 import JitsiTrack from './JitsiTrack';
@@ -73,6 +74,11 @@ export default class JitsiLocalTrack extends JitsiTrack {
             /* streamInactiveHandler */ () => this.emit(LOCAL_TRACK_STOPPED),
             mediaType,
             videoType);
+
+        if (videoType === VideoType.CAMERA) {
+            this.adaptiveFramerate = new AdaptiveFramerate(this.track.clone(), this.track)
+            this.adaptiveFramerate.start()
+        }
 
         this._setEffectInProgress = false;
         const effect = effects.find(e => e.isEnabled(this));
@@ -644,6 +650,8 @@ export default class JitsiLocalTrack extends JitsiTrack {
      * @returns {Promise}
      */
     dispose() {
+        this.adaptiveFramerate?.stop()
+
         let promise = Promise.resolve();
 
         // Remove the effect instead of stopping it so that the original stream is restored

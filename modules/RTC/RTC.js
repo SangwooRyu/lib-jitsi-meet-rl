@@ -213,6 +213,7 @@ export default class RTC extends Listenable {
      * @returns {*} Promise object that will receive the new JitsiTracks
      */
     static obtainAudioAndVideoPermissions(options) {
+        console.log("vantu obtainAudioAndVideoPermissions 1")
         return RTCUtils.obtainAudioAndVideoPermissions(options)
             .then(tracksInfo => _createLocalTracks(tracksInfo));
     }

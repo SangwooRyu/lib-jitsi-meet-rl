@@ -299,6 +299,7 @@ export default _mergeNamespaceAndModule({
      * JitsiConferenceError if rejected.
      */
     createLocalTracks(options = {}, oldfirePermissionPromptIsShownEvent) {
+        console.log("vantu createLocalTracks 0")
         let promiseFulfilled = false;
 
         const { firePermissionPromptIsShownEvent, fireSlowPromiseEvent, ...restOptions } = options;
