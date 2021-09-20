@@ -1288,8 +1288,10 @@ export default class ChatRoom extends Listenable {
 
         // emit an event to all participants in the chatroom.
         if (timerStatus === "started") {
+            let messagePayload = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            messagePayload = JSON.parse(messagePayload);
             try {
-                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, nick);
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, messagePayload.initiator,messagePayload.endTime);
             } catch(err) {
                 console.error(err);
             }

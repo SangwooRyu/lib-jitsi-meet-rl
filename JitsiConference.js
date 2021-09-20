@@ -1114,18 +1114,30 @@ JitsiConference.prototype.startRandomSelection = function(initiator) {
 }
 
 /**
- * Function that is invoked when a moderator starts tiemr feature.
+ * Function that is invoked when a moderator starts timer feature.
  * Used to notify participants that the timer has started.
  *
  * @param initiator one who initiates the message.
  * */
-JitsiConference.prototype.startTimer = function(initiator) {
+JitsiConference.prototype.startTimer = function(initiator,endUNIXTime) {
     // send a message to the chatroom with elementName as {setTimer}
     // and message as {timerStarted}, so that this can be used to notify all
     // participants that timer has been started for {duration}.
-    this.room.sendMessage("started", 'timer', initiator);
+    this.room.sendMessage("started", 'timer', "{\"initiator\":\"" +initiator+"\",\"endTime\":"+endUNIXTime+"}");
 }
 
+/**
+ * Function that is invoked when a moderator stops timer feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+ JitsiConference.prototype.stopTimer = function(initiator) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerFinished}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("finished", 'timer', initiator);
+}
 
 /** 
  * Function that is invoked to finalize the selection of participant from
