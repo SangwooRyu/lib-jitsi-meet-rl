@@ -1290,6 +1290,15 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        let randomSelectedID = $(msg).find('>pinrandom').text();
+        if(randomSelectedID) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.PIN_RANDOM_PARTICIPANT, randomSelectedID);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
         let userDeviceAccessFlag;

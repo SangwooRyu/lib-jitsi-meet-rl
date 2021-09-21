@@ -1117,11 +1117,14 @@ JitsiConference.prototype.startRandomSelection = function(initiator) {
  * Function that is invoked to finalize the selection of participant from
  * random selection procedure.
  */
-JitsiConference.prototype.finalizeRandomSelection = function(selectedParticipantDisplayName) {
+JitsiConference.prototype.finalizeRandomSelection = function(selectedParticipantDisplayName, randomParticipantID) {
     // send a message to the chatroom with elementName as {randomselection}
     // and message as {finished}, so that this can be used to notify all
     // participants that {initiator} has started random selection
     this.room.sendMessage("finished", 'randomselection', selectedParticipantDisplayName);
+
+    // this second sendMessage is used for pinning the randomly selected participant
+    this.room.sendMessage(randomParticipantID, 'pinrandom');
 }
 
 /**

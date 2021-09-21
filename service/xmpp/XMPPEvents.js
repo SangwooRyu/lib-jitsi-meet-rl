@@ -349,6 +349,8 @@ const XMPPEvents = {
 
     NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
 
+    PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
+
     RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
 };
 
