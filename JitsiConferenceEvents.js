@@ -397,6 +397,8 @@ export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selecti
 
 export const RANDOM_SELECTION_COUNTDOWN = 'conference.random_selection_countdown';
 
+export const PIN_RANDOM_PARTICIPANT = 'conference.pin_random_participant';
+
 export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
 
 // Notifies timer started.
