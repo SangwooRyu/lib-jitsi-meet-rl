@@ -444,6 +444,10 @@ export default class XMPP extends Listenable {
                         .catch(e => logger.warn('Error getting features from lobby.', e && e.message));
                 }
             }
+
+            if (identity.type === 'breakout_rooms') {
+                this.breakoutRoomsComponentAddress = identity.name;
+            }
         });
 
         if (this.avModerationComponentAddress
