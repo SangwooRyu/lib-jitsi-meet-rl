@@ -393,6 +393,20 @@ export const TIME_REMAINED = 'conference.time_remained';
 
 export const USER_DEVICE_ACCESS_DISABLED = 'conference.user_device_access_disabled';
 
+export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selection_started';
+
+export const RANDOM_SELECTION_COUNTDOWN = 'conference.random_selection_countdown';
+
+export const PIN_RANDOM_PARTICIPANT = 'conference.pin_random_participant';
+
+export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
+
+// Notifies timer started.
+export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
+
+// Notifies timer finished.
+export const NOTIFY_TIMER_FINISHED = 'conference.notify_timer_finished';
+
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';

@@ -1103,8 +1103,60 @@ JitsiConference.prototype._getInitialLocalTracks = function() {
 };
 
 /**
+ * Function that is invoked when a moderator starts the random selection feature.
+ * Used to notify participants that the random selection process has started.
+ */
+JitsiConference.prototype.startRandomSelection = function(initiator) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {started}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("started", 'randomselection', initiator);
+}
+
+/**
+ * Function that is invoked when a moderator starts timer feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+JitsiConference.prototype.startTimer = function(initiator,endUNIXTime) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerStarted}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("started", 'timer', "{\"initiator\":\"" +initiator+"\",\"endTime\":"+endUNIXTime+"}");
+}
+
+/**
+ * Function that is invoked when a moderator stops timer feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+ JitsiConference.prototype.stopTimer = function(initiator) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerFinished}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("finished", 'timer', initiator);
+}
+
+/** 
+ * Function that is invoked to finalize the selection of participant from
+ * random selection procedure.
+ */
+JitsiConference.prototype.finalizeRandomSelection = function(selectedParticipantDisplayName, randomParticipantID) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {finished}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("finished", 'randomselection', selectedParticipantDisplayName);
+
+    // this second sendMessage is used for pinning the randomly selected participant
+    this.room.sendMessage(randomParticipantID, 'pinrandom');
+}
+
+/**
  * Clear JitsiLocalTrack properties and listeners.
  * @param track the JitsiLocalTrack object.
+ * 
  */
 JitsiConference.prototype.onLocalTrackRemoved = function(track) {
     track._setConference(null);

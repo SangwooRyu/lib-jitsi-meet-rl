@@ -1268,6 +1268,72 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        // get the random selection status
+        let randomSelectionStatus = $(msg).find('>randomselection').text();
+
+        // emit an event to all participants in the chatroom for each randomSelectionStatus
+        if (randomSelectionStatus === "started") {
+            try {
+                // emit an event that notifies that random selection has been initiated by nick
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED, nick);
+
+                // emit an event to show countdown before random selection is completed
+                // we assign a fixed value of 5, which is the remaining seconds before countdown ends
+                const countdownRemained = 5;
+
+                // this status flag will determine whether or not to begin count down for timer
+                const startCountdown = true;
+
+                this.eventEmitter.emit(XMPPEvents.RANDOM_SELECTION_COUNTDOWN, countdownRemained, startCountdown); 
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (randomSelectionStatus === "finished") {
+            try {
+                // emit an event that notifies that random selection has been completed with 'nick' being the selected participant
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED, nick);
+
+                // emit an event to notify that we no longer require to display the countdown for random selection
+                const countdownRemained = 5;
+
+                // startCountdown flag is now changed to false
+                const startCountdown = false;
+
+                this.eventEmitter.emit(XMPPEvents.RANDOM_SELECTION_COUNTDOWN, countdownRemained, startCountdown);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        let randomSelectedID = $(msg).find('>pinrandom').text();
+        if(randomSelectedID) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.PIN_RANDOM_PARTICIPANT, randomSelectedID);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        // get the random timer start notification
+        let timerStatus = $(msg).find('>timer').text();
+
+        // emit an event to all participants in the chatroom.
+        if (timerStatus === "started") {
+            let messagePayload = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            messagePayload = JSON.parse(messagePayload);
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, messagePayload.initiator,messagePayload.endTime);
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (timerStatus === "finished") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_FINISHED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
         let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
         let userDeviceAccessFlag;
