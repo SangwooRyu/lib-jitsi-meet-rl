@@ -36,7 +36,7 @@ export default class BreakoutRoomsHelper {
      * @param {boolean} isBreakoutRoom - Whether this room is a breakout room.
      */
     setIsBreakoutRoom(isBreakoutRoom) {
-        this.isBreakoutRoom = isBreakoutRoom;
+        this._isBreakoutRoom = isBreakoutRoom;
     }
 
     /**
@@ -45,7 +45,7 @@ export default class BreakoutRoomsHelper {
      * @returns True if the room is a breakout room, false otherwise.
      */
     isBreakoutRoom() {
-        return this.isBreakoutRoom;
+        return this._isBreakoutRoom;
     }
 
     /**
