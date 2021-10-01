@@ -407,6 +407,9 @@ export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
 // Notifies timer finished.
 export const NOTIFY_TIMER_FINISHED = 'conference.notify_timer_finished';
 
+// Notifies birthdayhat on participant.
+export const NOTIFY_BIRTHDAY_HAT_ON = 'conference.notify_birthday_hat_on';
+
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';

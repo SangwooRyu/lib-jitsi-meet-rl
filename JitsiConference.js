@@ -1114,6 +1114,19 @@ JitsiConference.prototype.startRandomSelection = function(initiator) {
 }
 
 /**
+ * 
+ * @param {string} initiator 
+ * @param {string} remoteParticipantID
+ */
+JitsiConference.prototype.notifyBirthdayHatOn = function(initiator,remoteParticipantID) {
+    // send a message to the chatroom with elementName as {birthday}
+    // and message as {PUTHATON}, so that this can be used to notify a
+    // participant that AR hat has to be put on.
+    // Send a particular message to the user...
+    this.room.sendPrivateMessage(remoteParticipantID,"HATON", 'birthday', initiator);
+}
+
+/**
  * Function that is invoked when a moderator starts timer feature.
  * Used to notify participants that the timer has started.
  *
