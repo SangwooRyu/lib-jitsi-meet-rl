@@ -893,10 +893,6 @@ JitsiConference.prototype.sendTextMessage = function(
     }
 };
 
-JitsiConference.prototype.showBirthdayNotification = function(hasBirthdayFlag, birthDayParticipant) {
-    this.room.sendMessage(hasBirthdayFlag, 'birthdayalert', birthDayParticipant);
-}
-
 /**
  * Send private text message to another participant of the conference
  * @param id the id of the participant to send a private message.

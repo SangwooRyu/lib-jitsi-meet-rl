@@ -1281,18 +1281,6 @@ export default class ChatRoom extends Listenable {
             }
         }
 
-        // get the birthdayalert tag message's value
-        const birthdayAlert = $(msg).find('>birthdayalert').text();
-        const bParticipant = nick;
-
-        if (birthdayAlert === 'showalert') {
-            try {
-                this.eventEmitter.emit(XMPPEvents.SHOW_BIRTHDAY_ALERT, bParticipant);
-            } catch(err) {
-                console.error(err);
-            }
-        }
-
         // get the random selection status
         let randomSelectionStatus = $(msg).find('>randomselection').text();
 
