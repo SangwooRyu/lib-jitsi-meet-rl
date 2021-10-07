@@ -401,11 +401,16 @@ export const PIN_RANDOM_PARTICIPANT = 'conference.pin_random_participant';
 
 export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
 
+export const SHOW_BIRTHDAY_ALERT = 'conference.show_birthday_alert';
+
 // Notifies timer started.
 export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
 
 // Notifies timer finished.
 export const NOTIFY_TIMER_FINISHED = 'conference.notify_timer_finished';
+
+// Notifies birthdayhat on participant.
+export const NOTIFY_BIRTHDAY_HAT_ON = 'conference.notify_birthday_hat_on';
 
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 

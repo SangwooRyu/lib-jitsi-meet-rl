@@ -353,6 +353,9 @@ const XMPPEvents = {
 
     // Designates an event indicating that timer has started.
     NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
+    
+    // Designates an event indicating that birthday hat is to put on.
+    NOTIFY_BIRTHDAY_HAT_ON: 'xmpp.birthday_hat_on',
 
     // Designates an event indicating that timer has finished.
     NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
@@ -361,7 +364,9 @@ const XMPPEvents = {
 
     PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
 
-    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
+
+    SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert'
 };
 
 module.exports = XMPPEvents;
