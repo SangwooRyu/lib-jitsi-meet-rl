@@ -472,6 +472,18 @@ export default class ChatRoom extends Listenable {
         const member = {};
         const statusEl = pres.getElementsByTagName('status')[0];
 
+        // fetch birthDate presence message from the participants
+        const birthDateEl = pres.querySelector('birthDate');
+        let bDate = ''; // initialize birthDate as an empty string
+
+        if(birthDateEl !== null) {
+            bDate = Strophe.getText(birthDateEl);
+        }
+
+        if(bDate !== '') {
+            member.bDate = bDate;
+        }
+
         if (statusEl) {
             member.status = statusEl.textContent || '';
         }
@@ -675,6 +687,7 @@ export default class ChatRoom extends Listenable {
                     member.botType,
                     member.jid,
                     member.features,
+                    member.bDate,
                     member.isReplaceParticipant);
 
                 // we are reporting the status with the join
@@ -1263,6 +1276,18 @@ export default class ChatRoom extends Listenable {
             try {
                 this.eventEmitter.emit(XMPPEvents.NOTICE_MESSAGE, noticeMessage.text());
                 logger.log(`Conference received notice message: ${noticeMessage.text()}`);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        // get the birthdayalert tag message's value
+        const birthdayAlert = $(msg).find('>birthdayalert').text();
+        const bParticipant = nick;
+
+        if (birthdayAlert === 'showalert') {
+            try {
+                this.eventEmitter.emit(XMPPEvents.SHOW_BIRTHDAY_ALERT, bParticipant);
             } catch(err) {
                 console.error(err);
             }

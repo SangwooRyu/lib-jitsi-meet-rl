@@ -364,7 +364,9 @@ const XMPPEvents = {
 
     PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
 
-    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
+
+    SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert'
 };
 
 module.exports = XMPPEvents;

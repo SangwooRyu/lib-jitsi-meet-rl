@@ -893,6 +893,10 @@ JitsiConference.prototype.sendTextMessage = function(
     }
 };
 
+JitsiConference.prototype.showBirthdayNotification = function(hasBirthdayFlag, birthDayParticipant) {
+    this.room.sendMessage(hasBirthdayFlag, 'birthdayalert', birthDayParticipant);
+}
+
 /**
  * Send private text message to another participant of the conference
  * @param id the id of the participant to send a private message.
@@ -1785,7 +1789,7 @@ JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
  * the same jwt.
  */
 JitsiConference.prototype.onMemberJoined = function(
-        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, isReplaceParticipant) {
+        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, bDate, isReplaceParticipant) {
     const id = Strophe.getResourceFromJid(jid);
 
     if (id === 'focus' || this.myUserId() === id) {
@@ -1799,6 +1803,7 @@ JitsiConference.prototype.onMemberJoined = function(
     participant.setBotType(botType);
     participant.setFeatures(features);
     participant.setIsReplacing(isReplaceParticipant);
+    participant.setBDate(bDate);
 
     this.participants[id] = participant;
     this.eventEmitter.emit(

@@ -401,6 +401,8 @@ export const PIN_RANDOM_PARTICIPANT = 'conference.pin_random_participant';
 
 export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
 
+export const SHOW_BIRTHDAY_ALERT = 'conference.show_birthday_alert';
+
 // Notifies timer started.
 export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
 
