@@ -321,10 +321,24 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No meeting ID from backend');
             }
+            
+            // Timer: Start-> Intercept end-time and initiator of a running timer inside a conference.
+            const timerEndTime
+                = parseInt($(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_end_time"]>value').text(),10);
+            const timerInitiator
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_initiator"]>value').text();
+            if (timerEndTime){
+                try {
+                    this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, timerInitiator,timerEndTime);
+                } catch(err) {
+                    console.error(err);
+                }
+            }
+            // Timer: End
 
             const timeRemained
-                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');
-
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');           
+            
             if (timeRemained.length) {
                 const secTimeRemained = parseInt(timeRemained.text(), 10);
                 this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
