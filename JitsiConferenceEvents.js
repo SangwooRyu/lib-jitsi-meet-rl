@@ -403,6 +403,8 @@ export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_select
 
 export const SHOW_BIRTHDAY_ALERT = 'conference.show_birthday_alert';
 
+export const PARTICIPANT_BIRTHDAY_FLAG_UPDATED = 'conference.birthday_flag_updated';
+
 // Notifies timer started.
 export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
 
