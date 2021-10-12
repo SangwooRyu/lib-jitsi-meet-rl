@@ -1671,6 +1671,10 @@ JitsiConference.prototype.enableChatForParticipant = function(id) {
     this.room.enableChatForParticipant(participant.getJid());
 };
 
+JitsiConference.prototype.updateParticipantBirthdayHatFlag = function(id, hatOn) {
+    this.room.sendMessage('hat', 'birthdayHatFlag', "{\"id\":\"" + id + "\",\"hatOn\":" + hatOn + "}");
+}
+
 /**
  * Enable chat for all participants from the conference.
  * @param {string} id id of the participant to enable
@@ -1785,7 +1789,7 @@ JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
  * the same jwt.
  */
 JitsiConference.prototype.onMemberJoined = function(
-        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, bDate, isReplaceParticipant) {
+        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, bDate, hatOn, isReplaceParticipant) {
     const id = Strophe.getResourceFromJid(jid);
 
     if (id === 'focus' || this.myUserId() === id) {
@@ -1800,6 +1804,7 @@ JitsiConference.prototype.onMemberJoined = function(
     participant.setFeatures(features);
     participant.setIsReplacing(isReplaceParticipant);
     participant.setBDate(bDate);
+    participant.setHatOn(hatOn);
 
     this.participants[id] = participant;
     this.eventEmitter.emit(

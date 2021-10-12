@@ -490,6 +490,14 @@ export default class ChatRoom extends Listenable {
         const birthDateEl = pres.querySelector('birthDate');
         let bDate = ''; // initialize birthDate as an empty string
 
+        // fetch hatOn presence message from the participants
+        const hatOnEl = pres.querySelector('hatOn');
+        let hatOnFlag = false; // default false value for flag
+        if(hatOnEl !== null) {
+            hatOnFlag = (Strophe.getText(hatOnEl) === "true") // because we received hatOn flag as string, so we converted to boolean
+            member.hatOn = hatOnFlag;
+        }
+
         if(birthDateEl !== null) {
             bDate = Strophe.getText(birthDateEl);
         }
@@ -702,6 +710,7 @@ export default class ChatRoom extends Listenable {
                     member.jid,
                     member.features,
                     member.bDate,
+                    member.hatOn,
                     member.isReplaceParticipant);
 
                 // we are reporting the status with the join
@@ -1294,6 +1303,21 @@ export default class ChatRoom extends Listenable {
                 console.error(err);
             }
         }
+
+        // section to parse birthdayHatFlag when apply AR hat
+        const hatMsg = $(msg).find('>birthdayHatFlag').text();
+        if(hatMsg === 'hat') {
+            let data = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            data = JSON.parse(data);
+            const pID = data.id;
+            const hatOn = data.hatOn; // hatOn was being sent as a string, so we convert it to boolean
+            try {
+                this.eventEmitter.emit(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED, pID, hatOn);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        
 
         // get the random selection status
         let randomSelectionStatus = $(msg).find('>randomselection').text();
