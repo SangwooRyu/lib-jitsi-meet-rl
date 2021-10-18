@@ -11,6 +11,7 @@ import GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import Listenable from '../util/Listenable';
 
 import AVModeration from './AVModeration';
+import BreakoutRoomsHelper from './BreakoutRoomsHelper';
 import Lobby from './Lobby';
 import XmppConnection from './XmppConnection';
 import Moderator from './moderator';
@@ -135,6 +136,7 @@ export default class ChatRoom extends Listenable {
             this.lobby = new Lobby(this);
         }
         this.avModeration = new AVModeration(this);
+        this.breakoutRooms = new BreakoutRoomsHelper(this);
         this.initPresenceMap(options);
         this.lastPresences = {};
         this.phoneNumber = null;
@@ -319,10 +321,24 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No meeting ID from backend');
             }
+            
+            // Timer: Start-> Intercept end-time and initiator of a running timer inside a conference.
+            const timerEndTime
+                = parseInt($(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_end_time"]>value').text(),10);
+            const timerInitiator
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_initiator"]>value').text();
+            if (timerEndTime){
+                try {
+                    this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, timerInitiator,timerEndTime);
+                } catch(err) {
+                    console.error(err);
+                }
+            }
+            // Timer: End
 
             const timeRemained
-                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');
-
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');           
+            
             if (timeRemained.length) {
                 const secTimeRemained = parseInt(timeRemained.text(), 10);
                 this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
@@ -357,6 +373,19 @@ export default class ChatRoom extends Listenable {
 
             if (this.lobby) {
                 this.lobby.setLobbyRoomJid(lobbyRoomField && lobbyRoomField.length ? lobbyRoomField.text() : undefined);
+            }
+
+            const isBreakoutField
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_isbreakout"]>value');
+            const isBreakoutRoom = isBreakoutField?.text() || '0';
+
+            this.breakoutRooms.setIsBreakoutRoom(Boolean(parseInt(isBreakoutRoom)));
+
+            const breakoutMainRoomField
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_breakout_main_room"]>value');
+
+            if (breakoutMainRoomField?.length) {
+                this.breakoutRooms.setMainRoomJid(breakoutMainRoomField.text());
             }
 
             if (membersOnly !== this.membersOnlyEnabled) {
@@ -456,6 +485,26 @@ export default class ChatRoom extends Listenable {
         const from = pres.getAttribute('from');
         const member = {};
         const statusEl = pres.getElementsByTagName('status')[0];
+
+        // fetch birthDate presence message from the participants
+        const birthDateEl = pres.querySelector('birthDate');
+        let bDate = ''; // initialize birthDate as an empty string
+
+        // fetch hatOn presence message from the participants
+        const hatOnEl = pres.querySelector('hatOn');
+        let hatOnFlag = false; // default false value for flag
+        if(hatOnEl !== null) {
+            hatOnFlag = (Strophe.getText(hatOnEl) === "true") // because we received hatOn flag as string, so we converted to boolean
+            member.hatOn = hatOnFlag;
+        }
+
+        if(birthDateEl !== null) {
+            bDate = Strophe.getText(birthDateEl);
+        }
+
+        if(bDate !== '') {
+            member.bDate = bDate;
+        }
 
         if (statusEl) {
             member.status = statusEl.textContent || '';
@@ -660,6 +709,8 @@ export default class ChatRoom extends Listenable {
                     member.botType,
                     member.jid,
                     member.features,
+                    member.bDate,
+                    member.hatOn,
                     member.isReplaceParticipant);
 
                 // we are reporting the status with the join
@@ -1248,6 +1299,101 @@ export default class ChatRoom extends Listenable {
             try {
                 this.eventEmitter.emit(XMPPEvents.NOTICE_MESSAGE, noticeMessage.text());
                 logger.log(`Conference received notice message: ${noticeMessage.text()}`);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        // section to parse birthdayHatFlag when apply AR hat
+        const hatMsg = $(msg).find('>birthdayHatFlag').text();
+        if(hatMsg === 'hat') {
+            let data = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            data = JSON.parse(data);
+            const pID = data.id;
+            const hatOn = data.hatOn; // hatOn was being sent as a string, so we convert it to boolean
+            try {
+                this.eventEmitter.emit(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED, pID, hatOn);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        
+
+        // get the random selection status
+        let randomSelectionStatus = $(msg).find('>randomselection').text();
+
+        // emit an event to all participants in the chatroom for each randomSelectionStatus
+        if (randomSelectionStatus === "started") {
+            try {
+                // emit an event that notifies that random selection has been initiated by nick
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED, nick);
+
+                // emit an event to show countdown before random selection is completed
+                // we assign a fixed value of 5, which is the remaining seconds before countdown ends
+                const countdownRemained = 5;
+
+                // this status flag will determine whether or not to begin count down for timer
+                const startCountdown = true;
+
+                this.eventEmitter.emit(XMPPEvents.RANDOM_SELECTION_COUNTDOWN, countdownRemained, startCountdown); 
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (randomSelectionStatus === "finished") {
+            try {
+                // emit an event that notifies that random selection has been completed with 'nick' being the selected participant
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED, nick);
+
+                // emit an event to notify that we no longer require to display the countdown for random selection
+                const countdownRemained = 5;
+
+                // startCountdown flag is now changed to false
+                const startCountdown = false;
+
+                this.eventEmitter.emit(XMPPEvents.RANDOM_SELECTION_COUNTDOWN, countdownRemained, startCountdown);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        let randomSelectedID = $(msg).find('>pinrandom').text();
+        if(randomSelectedID) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.PIN_RANDOM_PARTICIPANT, randomSelectedID);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        // get the random timer start notification
+        let timerStatus = $(msg).find('>timer').text();
+
+        // emit an event to all participants in the chatroom.
+        if (timerStatus === "started") {
+            let messagePayload = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            messagePayload = JSON.parse(messagePayload);
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, messagePayload.initiator,messagePayload.endTime);
+            } catch(err) {
+                console.error(err);
+            }
+        } else if (timerStatus === "finished") {
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_FINISHED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        
+        // get the random timer start notification
+        let birthdayMessage = $(msg).find('>birthday').text();
+
+        // emit an event to all participants in the chatroom.
+        if (birthdayMessage === "HATON") {
+
+            let initiator = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON, initiator);
             } catch(err) {
                 console.error(err);
             }
@@ -1983,6 +2129,12 @@ export default class ChatRoom extends Listenable {
         return this.avModeration;
     }
 
+    /**
+     * @returns {BreakoutRoomsHelper}
+     */
+    getBreakoutRoomsHelper() {
+        return this.breakoutRooms;
+    }
 
     /**
      * Returns the phone number for joining the conference.
@@ -2176,7 +2328,11 @@ export default class ChatRoom extends Listenable {
      * rejected.
      */
     leave() {
-        return new Promise((resolve, reject) => {
+        const promises = [];
+
+        this.lobby?.lobbyRoom && promises.push(this.lobby.leave());
+
+        promises.push(new Promise((resolve, reject) => {
             const timeout = setTimeout(() => onMucLeft(true), 5000);
             const eventEmitter = this.eventEmitter;
 
@@ -2199,7 +2355,9 @@ export default class ChatRoom extends Listenable {
             }
             eventEmitter.on(XMPPEvents.MUC_LEFT, onMucLeft);
             this.doLeave();
-        });
+        }));
+
+        return Promise.all(promises);
     }
 }
 

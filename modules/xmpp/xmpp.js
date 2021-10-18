@@ -175,7 +175,7 @@ export default class XMPP extends Listenable {
 
         this._initStrophePlugins();
 
-        this.caps = new Caps(this.connection, this.options.clientNode);
+        this.caps = new Caps(this.connection, /* clientNode */ 'https://jitsi.org/jitsi-meet');
 
         // Initialize features advertised in disco-info
         this.initFeaturesList();
@@ -206,6 +206,7 @@ export default class XMPP extends Listenable {
         this.caps.addFeature('urn:xmpp:jingle:transports:dtls-sctp:1');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
+        this.caps.addFeature('http://jitsi.org/json-encoded-sources');
 
         //add HTTP file upload feature to the XMPP server
         this.caps.addFeature('urn:xmpp:http:upload:0');
@@ -443,6 +444,14 @@ export default class XMPP extends Listenable {
                         .catch(e => logger.warn('Error getting features from lobby.', e && e.message));
                 }
             }
+
+            if (identity.type === 'breakout_rooms') {
+                this.breakoutRoomsComponentAddress = identity.name;
+            }
+
+            if (identity.type === 'shard') {
+                this.options.deploymentInfo.shard = this.connection.shard = identity.name;
+            }
         });
 
         if (this.avModerationComponentAddress
@@ -545,13 +554,6 @@ export default class XMPP extends Listenable {
 
         this._processDiscoInfoIdentities(identities, features);
 
-        // check for shard name in identities
-        identities.forEach(i => {
-            if (i.type === 'shard') {
-                this.options.deploymentInfo.shard = i.name;
-            }
-        });
-
         if (foundIceServers || identities.size > 0 || features.size > 0) {
             this.connection._stropheConn.deleteHandler(this._sysMessageHandler);
             this._sysMessageHandler = null;
@@ -640,8 +642,9 @@ export default class XMPP extends Listenable {
      */
     createRoom(roomName, options, onCreateResource) {
         // There are cases (when using subdomain) where muc can hold an uppercase part
-        let roomjid = `${roomName}@${options.customDomain
-            ? options.customDomain : this.options.hosts.muc.toLowerCase()}/`;
+        const domain = options.customDomain
+            || (/_[-\da-f]{36}$/.test(roomName) ? `breakout.${this.options.hosts.domain}` : this.options.hosts.muc);
+        let roomjid = `${roomName}@${domain.toLowerCase()}/`;
 
         const mucNickname = onCreateResource
             ? onCreateResource(this.connection.jid, this.authenticatedUser)

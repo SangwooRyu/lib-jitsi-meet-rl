@@ -343,9 +343,32 @@ const XMPPEvents = {
 
     NOTICE_MESSAGE: 'xmpp.notice_message',
 
-    // start of added portion
-    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled'
-    // end of added portion
+    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled',
+
+    // Designates an event indicating that random-selection has started.
+    NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
+
+    // Designates an event indicating that random-selection has finished.
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    // Designates an event indicating that timer has started.
+    NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
+    
+    // Designates an event indicating that birthday hat is to put on.
+    NOTIFY_BIRTHDAY_HAT_ON: 'xmpp.birthday_hat_on',
+
+    // Designates an event indicating that timer has finished.
+    NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
+
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
+
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
+
+    SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert',
+
+    PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated'
 };
 
 module.exports = XMPPEvents;

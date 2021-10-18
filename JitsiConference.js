@@ -186,7 +186,9 @@ export default function JitsiConference(options) {
      * Detects issues with the audio of remote participants.
      * @type {AudioOutputProblemDetector}
      */
-    this._audioOutputProblemDetector = new AudioOutputProblemDetector(this);
+    if (!options.config.disableAudioLevels) {
+        this._audioOutputProblemDetector = new AudioOutputProblemDetector(this);
+    }
 
     /**
      * Indicates whether the connection is interrupted or not.
@@ -614,6 +616,8 @@ JitsiConference.prototype.leave = function() {
     }
 
     this._delayedIceFailed && this._delayedIceFailed.cancel();
+
+    this._maybeClearSITimeout();
 
     // Close both JVb and P2P JingleSessions
     if (this.jvbJingleSession) {
@@ -1091,14 +1095,81 @@ JitsiConference.prototype._fireMuteChangeEvent = function(track) {
  * @returns {Array<JitsiLocalTrack>} - list of local tracks that are unmuted.
  */
 JitsiConference.prototype._getInitialLocalTracks = function() {
+    // Always add the audio track on mobile Safari because of a known issue where audio playout doesn't happen
+    // if the user joins audio and video muted.
     return this.getLocalTracks()
-        .filter(track => (track.getType() === MediaType.AUDIO && !this.isStartAudioMuted())
+        .filter(track => (track.getType() === MediaType.AUDIO && (!this.isStartAudioMuted() || browser.isIosBrowser()))
         || (track.getType() === MediaType.VIDEO && !this.isStartVideoMuted()));
 };
 
 /**
+ * Function that is invoked when a moderator starts the random selection feature.
+ * Used to notify participants that the random selection process has started.
+ */
+JitsiConference.prototype.startRandomSelection = function(initiator) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {started}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("started", 'randomselection', initiator);
+}
+
+/**
+ * 
+ * @param {string} initiator 
+ * @param {string} remoteParticipantID
+ */
+JitsiConference.prototype.notifyBirthdayHatOn = function(initiator,remoteParticipantID) {
+    // send a message to the chatroom with elementName as {birthday}
+    // and message as {PUTHATON}, so that this can be used to notify a
+    // participant that AR hat has to be put on.
+    // Send a particular message to the user...
+    this.room.sendPrivateMessage(remoteParticipantID,"HATON", 'birthday', initiator);
+}
+
+/**
+ * Function that is invoked when a moderator starts timer feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+JitsiConference.prototype.startTimer = function(initiator,endUNIXTime) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerStarted}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("started", 'timer', "{\"initiator\":\"" +initiator+"\",\"endTime\":"+endUNIXTime+"}");
+}
+
+/**
+ * Function that is invoked when a moderator stops timer feature.
+ * Used to notify participants that the timer has started.
+ *
+ * @param initiator one who initiates the message.
+ * */
+ JitsiConference.prototype.stopTimer = function(initiator) {
+    // send a message to the chatroom with elementName as {setTimer}
+    // and message as {timerFinished}, so that this can be used to notify all
+    // participants that timer has been started for {duration}.
+    this.room.sendMessage("finished", 'timer', initiator);
+}
+
+/** 
+ * Function that is invoked to finalize the selection of participant from
+ * random selection procedure.
+ */
+JitsiConference.prototype.finalizeRandomSelection = function(selectedParticipantDisplayName, randomParticipantID) {
+    // send a message to the chatroom with elementName as {randomselection}
+    // and message as {finished}, so that this can be used to notify all
+    // participants that {initiator} has started random selection
+    this.room.sendMessage("finished", 'randomselection', selectedParticipantDisplayName);
+
+    // this second sendMessage is used for pinning the randomly selected participant
+    this.room.sendMessage(randomParticipantID, 'pinrandom');
+}
+
+/**
  * Clear JitsiLocalTrack properties and listeners.
  * @param track the JitsiLocalTrack object.
+ * 
  */
 JitsiConference.prototype.onLocalTrackRemoved = function(track) {
     track._setConference(null);
@@ -1138,8 +1209,10 @@ JitsiConference.prototype.removeTrack = function(track) {
  * @returns {Promise} resolves when the replacement is finished
  */
 JitsiConference.prototype.replaceTrack = function(oldTrack, newTrack) {
+    const oldTrackBelongsToConference = this === oldTrack?.conference;
+
     // First do the removal of the oldTrack at the JitsiConference level
-    if (oldTrack) {
+    if (oldTrackBelongsToConference) {
         if (oldTrack.disposed) {
             return Promise.reject(
                 new JitsiTrackError(JitsiTrackErrors.TRACK_IS_DISPOSED));
@@ -1152,24 +1225,32 @@ JitsiConference.prototype.replaceTrack = function(oldTrack, newTrack) {
         }
     }
 
+    if (oldTrack && !oldTrackBelongsToConference) {
+        logger.warn(`JitsiConference.replaceTrack oldTrack (${oldTrack} does not belong to this conference`);
+    }
+
     // Now replace the stream at the lower levels
-    return this._doReplaceTrack(oldTrack, newTrack)
+    return this._doReplaceTrack(oldTrackBelongsToConference ? oldTrack : null, newTrack)
         .then(() => {
-            oldTrack && this.onLocalTrackRemoved(oldTrack);
+            oldTrackBelongsToConference && this.onLocalTrackRemoved(oldTrack);
             newTrack && this._setupNewTrack(newTrack);
 
             // Send 'VideoTypeMessage' on the bridge channel when a video track is added/removed.
-            if (oldTrack?.isVideoTrack() || newTrack?.isVideoTrack()) {
+            if ((oldTrackBelongsToConference && oldTrack?.isVideoTrack()) || newTrack?.isVideoTrack()) {
                 this._sendBridgeVideoTypeMessage(newTrack);
             }
 
-            if (this.isMutedByFocus || this.isVideoMutedByFocus) {
+            if (newTrack !== null && (this.isMutedByFocus || this.isVideoMutedByFocus)) {
                 this._fireMuteChangeEvent(newTrack);
             }
 
             return Promise.resolve();
         })
-        .catch(error => Promise.reject(new Error(error)));
+        .catch(error => {
+            logger.error(`replaceTrack failed: ${error?.stack}`);
+
+            return Promise.reject(error);
+        });
 };
 
 /**
@@ -1590,6 +1671,10 @@ JitsiConference.prototype.enableChatForParticipant = function(id) {
     this.room.enableChatForParticipant(participant.getJid());
 };
 
+JitsiConference.prototype.updateParticipantBirthdayHatFlag = function(id, hatOn) {
+    this.room.sendMessage('hat', 'birthdayHatFlag', "{\"id\":\"" + id + "\",\"hatOn\":" + hatOn + "}");
+}
+
 /**
  * Enable chat for all participants from the conference.
  * @param {string} id id of the participant to enable
@@ -1704,7 +1789,7 @@ JitsiConference.prototype.ackMuteParticipantVideo = function(jid, ack) {
  * the same jwt.
  */
 JitsiConference.prototype.onMemberJoined = function(
-        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, isReplaceParticipant) {
+        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features, bDate, hatOn, isReplaceParticipant) {
     const id = Strophe.getResourceFromJid(jid);
 
     if (id === 'focus' || this.myUserId() === id) {
@@ -1718,6 +1803,8 @@ JitsiConference.prototype.onMemberJoined = function(
     participant.setBotType(botType);
     participant.setFeatures(features);
     participant.setIsReplacing(isReplaceParticipant);
+    participant.setBDate(bDate);
+    participant.setHatOn(hatOn);
 
     this.participants[id] = participant;
     this.eventEmitter.emit(
@@ -1841,8 +1928,10 @@ JitsiConference.prototype.onMemberLeft = function(jid) {
                 this.eventEmitter.emit(JitsiConferenceEvents.USER_LEFT, id, participant);
             }
 
-            this._maybeStartOrStopP2P(true /* triggered by user left event */);
-            this._maybeClearSITimeout();
+            if (this.room !== null) { // Skip if we have left the room already.
+                this._maybeStartOrStopP2P(true /* triggered by user left event */);
+                this._maybeClearSITimeout();
+            }
         });
 };
 
@@ -3909,4 +3998,13 @@ JitsiConference.prototype.avModerationApprove = function(mediaType, id) {
             this.isModerator() ? '' : 'participant is not a moderator, '}${
             this.room && this.isModerator() ? 'wrong media type passed' : ''}`);
     }
+};
+
+/**
+ * Returns <tt>true</tt> if Breakout Rooms support is enabled in the backend.
+ *
+ * @returns {boolean} whether Breakout Rooms is supported in the backend.
+ */
+JitsiConference.prototype.isBreakoutRoomsSupported = function() {
+    return Boolean(this.room?.getBreakoutRoomsHelper().isSupported());
 };

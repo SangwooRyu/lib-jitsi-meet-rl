@@ -166,6 +166,33 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
         JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_STARTED,
+        JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_STARTED);
+
+    this.chatRoomForwarder.forward(XMPPEvents.RANDOM_SELECTION_COUNTDOWN,
+        JitsiConferenceEvents.RANDOM_SELECTION_COUNTDOWN);
+
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED,
+        JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_FINISHED);
+    
+    this.chatRoomForwarder.forward(XMPPEvents.SHOW_BIRTHDAY_ALERT,
+        JitsiConferenceEvents.SHOW_BIRTHDAY_ALERT);
+
+    this.chatRoomForwarder.forward(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED,
+        JitsiConferenceEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED);
+    
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON,
+        JitsiConferenceEvents.NOTIFY_BIRTHDAY_HAT_ON);
+    
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_TIMER_STARTED,
+        JitsiConferenceEvents.NOTIFY_TIMER_STARTED);
+
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_TIMER_FINISHED,
+        JitsiConferenceEvents.NOTIFY_TIMER_FINISHED);
+
+    this.chatRoomForwarder.forward(XMPPEvents.PIN_RANDOM_PARTICIPANT,
+        JitsiConferenceEvents.PIN_RANDOM_PARTICIPANT);
+
     this.chatRoomForwarder.forward(XMPPEvents.MUC_JOINED,
         JitsiConferenceEvents.CONFERENCE_JOINED);
 
