@@ -666,9 +666,9 @@ export default class XMPP extends Listenable {
      * @returns {string} - The room JID.
      */
     getRoomJid(roomName, domain) {
-        const domain = domain
+        const roomDomain = domain
             || (/_[-\da-f]{36}$/.test(roomName) ? `breakout.${this.options.hosts.domain}` : this.options.hosts.muc);
-        return `${roomName}@${domain.toLowerCase()}`;
+        return `${roomName}@${roomDomain.toLowerCase()}`;
     }
 
     /**
