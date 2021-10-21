@@ -213,7 +213,7 @@ export default class XMPP extends Listenable {
 
         // Disable RTX on Firefox 83 and older versions because of
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1668028
-        if (!(this.options.disableRtx || (browser.isFirefox() && browser.isVersionLessThan(84)))) {
+        if (!(this.options.disableRtx || (browser.isFirefox() && browser.isVersionLessThan(94)))) {
             this.caps.addFeature('urn:ietf:rfc:4588');
         }
         if (this.options.enableOpusRed === true && browser.supportsAudioRed()) {
@@ -452,6 +452,10 @@ export default class XMPP extends Listenable {
             if (identity.type === 'shard') {
                 this.options.deploymentInfo.shard = this.connection.shard = identity.name;
             }
+
+            if (identity.type === 'region') {
+                this.options.deploymentInfo.region = this.connection.region = identity.name;
+            }
         });
 
         if (this.avModerationComponentAddress
@@ -642,9 +646,7 @@ export default class XMPP extends Listenable {
      */
     createRoom(roomName, options, onCreateResource) {
         // There are cases (when using subdomain) where muc can hold an uppercase part
-        const domain = options.customDomain
-            || (/_[-\da-f]{36}$/.test(roomName) ? `breakout.${this.options.hosts.domain}` : this.options.hosts.muc);
-        let roomjid = `${roomName}@${domain.toLowerCase()}/`;
+        let roomjid = `${this.getRoomJid(roomName, options.customDomain)}/`;
 
         const mucNickname = onCreateResource
             ? onCreateResource(this.connection.jid, this.authenticatedUser)
@@ -654,6 +656,29 @@ export default class XMPP extends Listenable {
         roomjid += mucNickname;
 
         return this.connection.emuc.createRoom(roomjid, null, options);
+    }
+
+    /**
+     * Returns the room JID based on the passed room name and domain.
+     *
+     * @param {string} roomName - The room name.
+     * @param {string} domain - The domain.
+     * @returns {string} - The room JID.
+     */
+    getRoomJid(roomName, domain) {
+        const domain = domain
+            || (/_[-\da-f]{36}$/.test(roomName) ? `breakout.${this.options.hosts.domain}` : this.options.hosts.muc);
+        return `${roomName}@${domain.toLowerCase()}`;
+    }
+
+    /**
+     * Check if a room with the passed JID is already created.
+     *
+     * @param {string} roomJid - The JID of the room.
+     * @returns {boolean}
+     */
+    isRoomCreated(roomName, domain) {
+        return this.connection.emuc.isRoomCreated(this.getRoomJid(roomName, domain));
     }
 
     /**
