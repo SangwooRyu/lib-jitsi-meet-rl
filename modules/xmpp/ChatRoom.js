@@ -123,6 +123,7 @@ export default class ChatRoom extends Listenable {
         this.presHandlers = {};
         this._removeConnListeners = [];
         this.joined = false;
+        this.inProgressEmitted = false;
         this.role = null;
         this.focusMucJid = null;
         this.noBridgeAvailable = false;
@@ -622,6 +623,15 @@ export default class ChatRoom extends Listenable {
                 break;
             }
             }
+        }
+
+        if (!this.joined && !this.inProgressEmitted) {
+            const now = this.connectionTimes['muc.join.started'] = window.performance.now();
+
+            logger.log('(TIME) MUC join started:\t', now);
+
+            this.eventEmitter.emit(XMPPEvents.MUC_JOIN_IN_PROGRESS);
+            this.inProgressEmitted = true;
         }
 
         if (from === this.myroomjid) {
@@ -1958,22 +1968,17 @@ export default class ChatRoom extends Listenable {
     /**
      *
      * @param mute
-     * @param callback
      */
-    setVideoMute(mute, callback) {
+    setVideoMute(mute) {
         this.sendVideoInfoPresence(mute);
-        if (callback) {
-            callback(mute);
-        }
     }
 
     /**
      *
      * @param mute
-     * @param callback
      */
-    setAudioMute(mute, callback) {
-        return this.sendAudioInfoPresence(mute, callback);
+    setAudioMute(mute) {
+        this.sendAudioInfoPresence(mute);
     }
 
     /**
@@ -1998,14 +2003,10 @@ export default class ChatRoom extends Listenable {
     /**
      *
      * @param mute
-     * @param callback
      */
-    sendAudioInfoPresence(mute, callback) {
+    sendAudioInfoPresence(mute) {
         // FIXME resend presence on CONNECTED
         this.addAudioInfoToPresence(mute) && this.sendPresence();
-        if (callback) {
-            callback();
-        }
     }
 
     /**
@@ -2319,6 +2320,7 @@ export default class ChatRoom extends Listenable {
         this._removeConnListeners = [];
 
         this.joined = false;
+        this.inProgressEmitted = false;
     }
 
     /**

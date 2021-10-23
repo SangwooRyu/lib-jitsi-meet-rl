@@ -131,7 +131,7 @@ export default class JingleSessionPC extends JingleSession {
      * @param {XmppConnection} connection - The XMPP connection instance.
      * @param mediaConstraints the media constraints object passed to createOffer/Answer, as defined
      * by the WebRTC standard
-     * @param iceConfig the ICE servers config object as defined by the WebRTC standard.
+     * @param pcConfig The {@code RTCConfiguration} to use for the WebRTC peer connection.
      * @param {boolean} isP2P indicates whether this instance is meant to be used in a direct, peer to
      * peer connection or <tt>false</tt> if it's a JVB connection.
      * @param {boolean} isInitiator indicates if it will be the side which initiates the session.
@@ -145,13 +145,13 @@ export default class JingleSessionPC extends JingleSession {
             remoteJid,
             connection,
             mediaConstraints,
-            iceConfig,
+            pcConfig,
             isP2P,
             isInitiator) {
         super(
             sid,
             localJid,
-            remoteJid, connection, mediaConstraints, iceConfig, isInitiator);
+            remoteJid, connection, mediaConstraints, pcConfig, isInitiator);
 
         /**
          * The bridge session's identifier. One Jingle session can during
@@ -388,7 +388,7 @@ export default class JingleSessionPC extends JingleSession {
         this.peerconnection
             = this.rtc.createPeerConnection(
                     this.signalingLayer,
-                    this.iceConfig,
+                    this.pcConfig,
                     this.isP2P,
                     pcOptions);
 
@@ -599,20 +599,24 @@ export default class JingleSessionPC extends JingleSession {
             const state = this.peerconnection.signalingState;
             const remoteDescription = this.peerconnection.remoteDescription;
 
-            if (this.usesUnifiedPlan && state === 'stable'
-                && remoteDescription && typeof remoteDescription.sdp === 'string') {
-                logger.debug(`${this} onnegotiationneeded fired on ${this.peerconnection} in state: ${state}`);
+            if (this.usesUnifiedPlan
+                && !this.isP2P
+                && state === 'stable'
+                && remoteDescription
+                && typeof remoteDescription.sdp === 'string') {
+                logger.info(`${this} onnegotiationneeded fired on ${this.peerconnection}`);
+
                 const workFunction = finishedCallback => {
                     const oldSdp = new SDP(this.peerconnection.localDescription.sdp);
 
                     this._renegotiate()
+                        .then(() => this.peerconnection.configureSenderVideoEncodings())
                         .then(() => {
                             const newSdp = new SDP(this.peerconnection.localDescription.sdp);
 
                             this.notifyMySSRCUpdate(oldSdp, newSdp);
-                            finishedCallback();
-                        },
-                        finishedCallback /* will be called with en error */);
+                        })
+                        .then(() => finishedCallback(), error => finishedCallback(error));
                 };
 
                 this.modificationQueue.push(
@@ -1477,20 +1481,6 @@ export default class JingleSessionPC extends JingleSession {
     }
 
     /**
-     * Sets the maximum bitrates on the local video track. Bitrate values from
-     * videoQuality settings in config.js will be used for configuring the sender.
-     * @returns {Promise<void>} promise that will be resolved when the operation is
-     * successful and rejected otherwise.
-     */
-    setSenderMaxBitrates() {
-        if (this._assertNotEnded()) {
-            return this.peerconnection.setMaxBitRate();
-        }
-
-        return Promise.resolve();
-    }
-
-    /**
      * Sets the resolution constraint on the local camera track.
      * @param {number} maxFrameHeight - The user preferred max frame height.
      * @returns {Promise} promise that will be resolved when the operation is
@@ -1508,21 +1498,11 @@ export default class JingleSessionPC extends JingleSession {
                 return this.setMediaTransferActive(true, videoActive);
             }
 
-            return this.peerconnection.setSenderVideoConstraint(maxFrameHeight);
-        }
+            const promise = typeof maxFrameHeight === 'undefined'
+                ? this.peerconnection.configureSenderVideoEncodings()
+                : this.peerconnection.setSenderVideoConstraints(maxFrameHeight);
 
-        return Promise.resolve();
-    }
-
-    /**
-     * Sets the degradation preference on the video sender. This setting determines if
-     * resolution or framerate will be preferred when bandwidth or cpu is constrained.
-     * @returns {Promise<void>} promise that will be resolved when the operation is
-     * successful and rejected otherwise.
-     */
-    setSenderVideoDegradationPreference() {
-        if (this._assertNotEnded()) {
-            return this.peerconnection.setSenderVideoDegradationPreference();
+            return promise;
         }
 
         return Promise.resolve();
@@ -2110,14 +2090,11 @@ export default class JingleSessionPC extends JingleSession {
                     }
 
                     return promise.then(() => {
-                        if (newTrack && newTrack.isVideoTrack()) {
+                        if (newTrack?.isVideoTrack()) {
                             logger.debug(`${this} replaceTrack worker: configuring video stream`);
 
-                            // FIXME set all sender parameters in one go?
-                            // Set the degradation preference on the new video sender.
-                            return this.peerconnection.setSenderVideoDegradationPreference()
-                                .then(() => this.peerconnection.setSenderVideoConstraint())
-                                .then(() => this.peerconnection.setMaxBitRate());
+                            // Configure the video encodings after the track is replaced.
+                            return this.peerconnection.configureSenderVideoEncodings();
                         }
                     });
                 })
@@ -2262,12 +2239,10 @@ export default class JingleSessionPC extends JingleSession {
         return this._addRemoveTrackAsMuteUnmute(
             false /* add as unmute */, track)
             .then(() => {
-                // Apply the video constraints, max bitrates and degradation preference on
-                // the video sender if needed.
-                if (track.isVideoTrack() && browser.doesVideoMuteByStreamRemove()) {
-                    return this.setSenderMaxBitrates()
-                        .then(() => this.setSenderVideoDegradationPreference())
-                        .then(() => this.setSenderVideoConstraint());
+                // Configure the video encodings after the track is unmuted. If the user joins the call muted and
+                // unmutes it the first time, all the parameters need to be configured.
+                if (track.isVideoTrack()) {
+                    return this.peerconnection.configureSenderVideoEncodings();
                 }
             });
     }

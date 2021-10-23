@@ -199,6 +199,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.NOTICE_MESSAGE,
         JitsiConferenceEvents.NOTICE_MESSAGE);
     
+    this.chatRoomForwarder.forward(XMPPEvents.MUC_JOIN_IN_PROGRESS,
+        JitsiConferenceEvents.CONFERENCE_JOIN_IN_PROGRESS);
+
     this.chatRoomForwarder.forward(XMPPEvents.MEETING_ID_SET,
         JitsiConferenceEvents.CONFERENCE_UNIQUE_ID_SET);
 
@@ -778,8 +781,23 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function() {
                 });
             }
         });
+    this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_PARTICIPANT_REJECTED,
+        (mediaType, jid) => {
+            const participant = conference.getParticipantById(Strophe.getResourceFromJid(jid));
+
+            if (participant) {
+                conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_PARTICIPANT_REJECTED, {
+                    participant,
+                    mediaType
+                });
+            }
+        });
     this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_APPROVED,
         value => conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_APPROVED, { mediaType: value }));
+    this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_REJECTED,
+        value => {
+            conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_REJECTED, { mediaType: value });
+        });
 };
 
 /**
