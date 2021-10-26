@@ -1029,7 +1029,7 @@ TraceablePeerConnection.prototype._remoteTrackRemoved = function(
     const trackId = track && RTC.getTrackID(track);
 
     if (!RTC.isUserStreamById(streamId)) {
-        logger.info(`${this} ignored remote 'stream removed' event for non-user stream[id=${streamId}]`);
+        logger.debug(`${this} ignored remote 'stream removed' event for non-user stream[id=${streamId}]`);
 
         return;
     }
@@ -2435,7 +2435,7 @@ TraceablePeerConnection.prototype.setSenderVideoConstraints = function(frameHeig
         : DEGRADATION_PREFERENCE_CAMERA; // Prefer frame-rate for high fps share and camera.
 
     parameters.degradationPreference = preference;
-    logger.info(`${this} Setting degradation preference [preference=${preference},track=${localVideoTrack}`);
+    logger.debug(`${this} Setting degradation preference [preference=${preference},track=${localVideoTrack}`);
 
     // Calculate the encodings active state based on the resolution requested by the bridge.
     this.encodingsEnabledState = this.tpcUtils.calculateEncodingsActiveState(localVideoTrack, frameHeight);
@@ -2489,7 +2489,7 @@ TraceablePeerConnection.prototype.setSenderVideoConstraints = function(frameHeig
         parameters.encodings[0].active = false;
     }
 
-    logger.info(`${this} setting max height=${frameHeight},encodings=${JSON.stringify(parameters.encodings)}`);
+    logger.debug(`${this} setting max height=${frameHeight},encodings=${JSON.stringify(parameters.encodings)}`);
 
     return videoSender.setParameters(parameters).then(() => {
         localVideoTrack.maxEnabledResolution = frameHeight;
