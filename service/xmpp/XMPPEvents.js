@@ -381,7 +381,9 @@ const XMPPEvents = {
 
     SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert',
 
-    PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated'
+    PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated',
+
+    FACE_DETECT_ENABLED: 'xmpp.face_detect_enabled',
 };
 
 module.exports = XMPPEvents;

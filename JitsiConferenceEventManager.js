@@ -163,6 +163,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.TIME_REMAINED,
         JitsiConferenceEvents.TIME_REMAINED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.FACE_DETECT_ENABLED,
+        JitsiConferenceEvents.FACE_DETECT_ENABLED);
+
     this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
         JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
 
