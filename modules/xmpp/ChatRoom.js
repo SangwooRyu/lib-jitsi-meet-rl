@@ -1337,7 +1337,15 @@ export default class ChatRoom extends Listenable {
                 console.error(err);
             }
         }
-        
+
+        const faceDetectEnabled = $(msg).find('>facedetect').text();
+        if (faceDetectEnabled.length) {
+            try {
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, JSON.parse(faceDetectEnabled.text()));
+            } catch(err) {
+                console.error(err);
+            }
+        }
 
         // get the random selection status
         let randomSelectionStatus = $(msg).find('>randomselection').text();
