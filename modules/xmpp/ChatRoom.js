@@ -1339,9 +1339,10 @@ export default class ChatRoom extends Listenable {
         }
 
         const faceDetectEnabled = $(msg).find('>facedetect').text();
-        if (faceDetectEnabled.length) {
+        if (faceDetectEnabled) {
             try {
-                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, JSON.parse(faceDetectEnabled.text()));
+                console.log('faceDetectEnabled received:', faceDetectEnabled);
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, JSON.parse(faceDetectEnabled));
             } catch(err) {
                 console.error(err);
             }
