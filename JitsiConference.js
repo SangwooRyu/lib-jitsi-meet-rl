@@ -4062,3 +4062,7 @@ JitsiConference.prototype.avModerationReject = function(mediaType, id) {
 JitsiConference.prototype.isBreakoutRoomsSupported = function() {
     return Boolean(this.room?.getBreakoutRoomsHelper().isSupported());
 };
+
+JitsiConference.prototype.faceDetectEnabled = function(value) {
+    this.room.sendMessage(value.toString(), 'facedetect');
+}

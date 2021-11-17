@@ -474,3 +474,5 @@ export const AV_MODERATION_PARTICIPANT_APPROVED = 'conference.av_moderation.part
  * }.
  */
 export const AV_MODERATION_PARTICIPANT_REJECTED = 'conference.av_moderation.participant.rejected';
+
+export const FACE_DETECT_ENABLED = 'conference.face_detect.enabled';

@@ -347,6 +347,16 @@ export default class ChatRoom extends Listenable {
                 logger.warn('No time remained from backend');
             }
 
+            const faceDetect
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_facedetect"]>value');           
+            
+            if (faceDetect.length) {
+                const value = Boolean(parseInt(faceDetect.text()));
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, value);
+            } else {
+                logger.warn('No face detect enabled from backend');
+            }
+
             const userDeviceAccessDisabledStr
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userDeviceAccessDisabled"]>value');
 
@@ -1316,7 +1326,7 @@ export default class ChatRoom extends Listenable {
 
         // section to parse birthdayHatFlag when apply AR hat
         const hatMsg = $(msg).find('>birthdayHatFlag').text();
-        if(hatMsg === 'hat') {
+        if (hatMsg === 'hat') {
             let data = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
             data = JSON.parse(data);
             const pID = data.id;
@@ -1327,7 +1337,16 @@ export default class ChatRoom extends Listenable {
                 console.error(err);
             }
         }
-        
+
+        const faceDetectEnabled = $(msg).find('>facedetect').text();
+        if (faceDetectEnabled) {
+            try {
+                console.log('faceDetectEnabled received:', faceDetectEnabled);
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, JSON.parse(faceDetectEnabled));
+            } catch(err) {
+                console.error(err);
+            }
+        }
 
         // get the random selection status
         let randomSelectionStatus = $(msg).find('>randomselection').text();
