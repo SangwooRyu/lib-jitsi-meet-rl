@@ -130,6 +130,9 @@ const XMPPEvents = {
     // Designates an event indicating that the XMPP MUC was destroyed.
     MUC_DESTROYED: 'xmpp.muc_destroyed',
 
+    // Designates an event indicating that we are currently in process of joining the XMPP MUC.
+    MUC_JOIN_IN_PROGRESS: 'xmpp.muc_join_in_progress',
+
     // Designates an event indicating that we have joined the XMPP MUC.
     MUC_JOINED: 'xmpp.muc_joined',
 
@@ -259,6 +262,11 @@ const XMPPEvents = {
     AV_MODERATION_APPROVED: 'xmpp.av_moderation.approved',
 
     /**
+    * Event fired when we receive a message for AV moderation rejected for the local participant.
+    */
+    AV_MODERATION_REJECTED: 'xmpp.av_moderation.rejected',
+
+    /**
      * Event fired when we receive a message for AV moderation.
      */
     AV_MODERATION_RECEIVED: 'xmpp.av_moderation.received',
@@ -272,6 +280,11 @@ const XMPPEvents = {
      * Event fired when we receive message that a new jid was approved.
      */
     AV_MODERATION_PARTICIPANT_APPROVED: 'xmpp.av_moderation.participant.approved',
+
+    /**
+     * Event fired when we receive message that a new jid was approved.
+     */
+    AV_MODERATION_PARTICIPANT_REJECTED: 'xmpp.av_moderation.participant.rejected',
 
     // Designates an event indicating that we should join the conference with
     // audio and/or video muted.
@@ -353,6 +366,9 @@ const XMPPEvents = {
 
     // Designates an event indicating that timer has started.
     NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
+    
+    // Designates an event indicating that birthday hat is to put on.
+    NOTIFY_BIRTHDAY_HAT_ON: 'xmpp.birthday_hat_on',
 
     // Designates an event indicating that timer has finished.
     NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
@@ -361,7 +377,13 @@ const XMPPEvents = {
 
     PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
 
-    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown'
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
+
+    SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert',
+
+    PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated',
+
+    FACE_DETECT_ENABLED: 'xmpp.face_detect_enabled',
 };
 
 module.exports = XMPPEvents;

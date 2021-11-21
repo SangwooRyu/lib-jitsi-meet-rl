@@ -123,6 +123,7 @@ export default class ChatRoom extends Listenable {
         this.presHandlers = {};
         this._removeConnListeners = [];
         this.joined = false;
+        this.inProgressEmitted = false;
         this.role = null;
         this.focusMucJid = null;
         this.noBridgeAvailable = false;
@@ -321,15 +322,39 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No meeting ID from backend');
             }
+            
+            // Timer: Start-> Intercept end-time and initiator of a running timer inside a conference.
+            const timerEndTime
+                = parseInt($(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_end_time"]>value').text(),10);
+            const timerInitiator
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timer_initiator"]>value').text();
+            if (timerEndTime){
+                try {
+                    this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_STARTED, timerInitiator,timerEndTime);
+                } catch(err) {
+                    console.error(err);
+                }
+            }
+            // Timer: End
 
             const timeRemained
-                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');
-
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_timeremained"]>value');           
+            
             if (timeRemained.length) {
                 const secTimeRemained = parseInt(timeRemained.text(), 10);
                 this.eventEmitter.emit(XMPPEvents.TIME_REMAINED, secTimeRemained);
             } else {
                 logger.warn('No time remained from backend');
+            }
+
+            const faceDetect
+                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_facedetect"]>value');           
+            
+            if (faceDetect.length) {
+                const value = Boolean(parseInt(faceDetect.text()));
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, value);
+            } else {
+                logger.warn('No face detect enabled from backend');
             }
 
             const userDeviceAccessDisabledStr
@@ -472,6 +497,26 @@ export default class ChatRoom extends Listenable {
         const member = {};
         const statusEl = pres.getElementsByTagName('status')[0];
 
+        // fetch birthDate presence message from the participants
+        const birthDateEl = pres.querySelector('birthDate');
+        let bDate = ''; // initialize birthDate as an empty string
+
+        // fetch hatOn presence message from the participants
+        const hatOnEl = pres.querySelector('hatOn');
+        let hatOnFlag = false; // default false value for flag
+        if(hatOnEl !== null) {
+            hatOnFlag = (Strophe.getText(hatOnEl) === "true") // because we received hatOn flag as string, so we converted to boolean
+            member.hatOn = hatOnFlag;
+        }
+
+        if(birthDateEl !== null) {
+            bDate = Strophe.getText(birthDateEl);
+        }
+
+        if(bDate !== '') {
+            member.bDate = bDate;
+        }
+
         if (statusEl) {
             member.status = statusEl.textContent || '';
         }
@@ -590,6 +635,15 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        if (!this.joined && !this.inProgressEmitted) {
+            const now = this.connectionTimes['muc.join.started'] = window.performance.now();
+
+            logger.log('(TIME) MUC join started:\t', now);
+
+            this.eventEmitter.emit(XMPPEvents.MUC_JOIN_IN_PROGRESS);
+            this.inProgressEmitted = true;
+        }
+
         if (from === this.myroomjid) {
             const newRole
                 = member.affiliation === 'owner' ? member.role : member.role; // ternary option was initially 'none';
@@ -675,6 +729,8 @@ export default class ChatRoom extends Listenable {
                     member.botType,
                     member.jid,
                     member.features,
+                    member.bDate,
+                    member.hatOn,
                     member.isReplaceParticipant);
 
                 // we are reporting the status with the join
@@ -1268,6 +1324,30 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        // section to parse birthdayHatFlag when apply AR hat
+        const hatMsg = $(msg).find('>birthdayHatFlag').text();
+        if (hatMsg === 'hat') {
+            let data = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            data = JSON.parse(data);
+            const pID = data.id;
+            const hatOn = data.hatOn; // hatOn was being sent as a string, so we convert it to boolean
+            try {
+                this.eventEmitter.emit(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED, pID, hatOn);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
+        const faceDetectEnabled = $(msg).find('>facedetect').text();
+        if (faceDetectEnabled) {
+            try {
+                console.log('faceDetectEnabled received:', faceDetectEnabled);
+                this.eventEmitter.emit(XMPPEvents.FACE_DETECT_ENABLED, JSON.parse(faceDetectEnabled));
+            } catch(err) {
+                console.error(err);
+            }
+        }
+
         // get the random selection status
         let randomSelectionStatus = $(msg).find('>randomselection').text();
 
@@ -1329,6 +1409,20 @@ export default class ChatRoom extends Listenable {
         } else if (timerStatus === "finished") {
             try {
                 this.eventEmitter.emit(XMPPEvents.NOTIFY_TIMER_FINISHED, nick);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        
+        // get the random timer start notification
+        let birthdayMessage = $(msg).find('>birthday').text();
+
+        // emit an event to all participants in the chatroom.
+        if (birthdayMessage === "HATON") {
+
+            let initiator = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
+            try {
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON, initiator);
             } catch(err) {
                 console.error(err);
             }
@@ -1893,22 +1987,17 @@ export default class ChatRoom extends Listenable {
     /**
      *
      * @param mute
-     * @param callback
      */
-    setVideoMute(mute, callback) {
+    setVideoMute(mute) {
         this.sendVideoInfoPresence(mute);
-        if (callback) {
-            callback(mute);
-        }
     }
 
     /**
      *
      * @param mute
-     * @param callback
      */
-    setAudioMute(mute, callback) {
-        return this.sendAudioInfoPresence(mute, callback);
+    setAudioMute(mute) {
+        this.sendAudioInfoPresence(mute);
     }
 
     /**
@@ -1933,14 +2022,10 @@ export default class ChatRoom extends Listenable {
     /**
      *
      * @param mute
-     * @param callback
      */
-    sendAudioInfoPresence(mute, callback) {
+    sendAudioInfoPresence(mute) {
         // FIXME resend presence on CONNECTED
         this.addAudioInfoToPresence(mute) && this.sendPresence();
-        if (callback) {
-            callback();
-        }
     }
 
     /**
@@ -2254,6 +2339,7 @@ export default class ChatRoom extends Listenable {
         this._removeConnListeners = [];
 
         this.joined = false;
+        this.inProgressEmitted = false;
     }
 
     /**

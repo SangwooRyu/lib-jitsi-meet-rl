@@ -29,7 +29,7 @@ export default class JitsiParticipant {
      * @param {boolean?} isReplacing - whether this is a participant replacing another into the meeting.
      * @param {boolean?} isReplaced - whether this is a participant to be kicked and replaced into the meeting.
      */
-    constructor(jid, conference, displayName, hidden, statsID, status, identity, isReplacing, isReplaced) {
+    constructor(jid, conference, displayName, hidden, statsID, status, identity, isReplacing, isReplaced, hatOn, bDate) {
         this._jid = jid;
         this._id = Strophe.getResourceFromJid(jid);
         this._conference = conference;
@@ -45,6 +45,8 @@ export default class JitsiParticipant {
         this._identity = identity;
         this._isReplacing = isReplacing;
         this._isReplaced = isReplaced;
+        this._bDate = bDate;
+        this._hatOn = hatOn; // default value of hatOn for a participant is set to false;
         this._features = new Set();
     }
 
@@ -100,6 +102,14 @@ export default class JitsiParticipant {
      */
     getConnectionStatus() {
         return this._connectionStatus;
+    }
+
+    getbDate() {
+        return this._bDate;
+    }
+
+    getHatOn() {
+        return this._hatOn;
     }
 
     /**
@@ -251,6 +261,14 @@ export default class JitsiParticipant {
      */
     setRole(newRole) {
         this._role = newRole;
+    }
+
+    setBDate(newBDate) {
+        this._bDate = newBDate;
+    }
+
+    setHatOn(newHatValue) {
+        this._hatOn = newHatValue;
     }
 
     /**

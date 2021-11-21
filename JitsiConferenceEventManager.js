@@ -163,6 +163,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.TIME_REMAINED,
         JitsiConferenceEvents.TIME_REMAINED);
 
+    this.chatRoomForwarder.forward(XMPPEvents.FACE_DETECT_ENABLED,
+        JitsiConferenceEvents.FACE_DETECT_ENABLED);
+
     this.chatRoomForwarder.forward(XMPPEvents.USER_DEVICE_ACCESS_DISABLED,
         JitsiConferenceEvents.USER_DEVICE_ACCESS_DISABLED);
 
@@ -174,6 +177,15 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
 
     this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED,
         JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_FINISHED);
+    
+    this.chatRoomForwarder.forward(XMPPEvents.SHOW_BIRTHDAY_ALERT,
+        JitsiConferenceEvents.SHOW_BIRTHDAY_ALERT);
+
+    this.chatRoomForwarder.forward(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED,
+        JitsiConferenceEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED);
+    
+    this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON,
+        JitsiConferenceEvents.NOTIFY_BIRTHDAY_HAT_ON);
     
     this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_TIMER_STARTED,
         JitsiConferenceEvents.NOTIFY_TIMER_STARTED);
@@ -190,6 +202,9 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.NOTICE_MESSAGE,
         JitsiConferenceEvents.NOTICE_MESSAGE);
     
+    this.chatRoomForwarder.forward(XMPPEvents.MUC_JOIN_IN_PROGRESS,
+        JitsiConferenceEvents.CONFERENCE_JOIN_IN_PROGRESS);
+
     this.chatRoomForwarder.forward(XMPPEvents.MEETING_ID_SET,
         JitsiConferenceEvents.CONFERENCE_UNIQUE_ID_SET);
 
@@ -769,8 +784,23 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function() {
                 });
             }
         });
+    this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_PARTICIPANT_REJECTED,
+        (mediaType, jid) => {
+            const participant = conference.getParticipantById(Strophe.getResourceFromJid(jid));
+
+            if (participant) {
+                conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_PARTICIPANT_REJECTED, {
+                    participant,
+                    mediaType
+                });
+            }
+        });
     this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_APPROVED,
         value => conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_APPROVED, { mediaType: value }));
+    this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_REJECTED,
+        value => {
+            conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_REJECTED, { mediaType: value });
+        });
 };
 
 /**
