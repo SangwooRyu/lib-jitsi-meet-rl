@@ -329,6 +329,16 @@ export default class JingleSessionPC extends JingleSession {
         pcOptions.enableInsertableStreams = options.enableInsertableStreams;
         pcOptions.videoQuality = options.videoQuality;
         pcOptions.forceTurnRelay = options.forceTurnRelay;
+        pcOptions.usesUnifiedPlan = this.usesUnifiedPlan
+            = browser.supportsUnifiedPlan()
+                && (browser.isFirefox()
+                    || browser.isWebKitBased()
+                    || (browser.isChromiumBased()
+
+                        // Provide a way to control the behavior for jvb and p2p connections independently.
+                        && this.isP2P
+                        ? options.p2p?.enableUnifiedOnChrome
+                        : options.enableUnifiedOnChrome ?? true));
 
         if (this.isP2P) {
             // simulcast needs to be disabled for P2P (121) calls
@@ -1739,26 +1749,46 @@ export default class JingleSessionPC extends JingleSession {
             // eslint-disable-next-line no-param-reassign
             lines = lines.split('\r\n');
             lines.pop(); // remove empty last element;
-            if (!this.usesUnifiedPlan) {
-                lines.forEach(line => {
-                    remoteSdp.media[idx]
-                        = remoteSdp.media[idx].replace(`${line}\r\n`, '');
-                });
-            } else {
+            if (this.usesUnifiedPlan) {
                 lines.forEach(line => {
                     const mid = remoteSdp.media.findIndex(mLine => mLine.includes(line));
 
                     if (mid > -1) {
-                        remoteSdp.media[mid] = remoteSdp.media[mid].replace(`${line}\r\n`, '');
+                        // Remove the ssrcs from the m-line in
+                        // 1. Plan-b mode always.
+                        // 2. Unified mode but only for jvb connection. In p2p mode if the ssrc is removed and added
+                        // back to the same m-line, Chrome/Safari do not render the media even if it being received
+                        // and decoded from the remote peer. The webrtc spec is not clear about m-line re-use and
+                        // the browser vendors have implemented this differently. Currently workaround this by changing
+                        // the media direction, that should be enough for the browser to fire the "removetrack" event
+                        // on the associated MediaStream.
+                        if (!this.usesUnifiedPlan || (this.usesUnifiedPlan && !this.isP2P)) {
+                            remoteSdp.media[mid] = remoteSdp.media[mid].replace(`${line}\r\n`, '');
+                        }
 
-                        // Change the direction to "inactive" only on Firefox. Audio fails on
-                        // Safari (possibly Chrome in unified plan mode) when we try to re-use inactive
-                        // m-lines due to a webkit bug.
-                        // https://bugs.webkit.org/show_bug.cgi?id=211181
-                        if (browser.isFirefox()) {
-                            remoteSdp.media[mid] = remoteSdp.media[mid].replace('a=sendonly', 'a=inactive');
+                        // The current direction of the transceiver for p2p will depend on whether a local sources is
+                        // added or not. It will be 'sendrecv' if the local source is present, 'sendonly' otherwise.
+                        if (this.isP2P) {
+                            const mediaType = SDPUtil.parseMLine(remoteSdp.media[mid].split('\r\n')[0])?.media;
+                            const desiredDirection = this.peerconnection.getDesiredMediaDirection(mediaType, false);
+
+                            [ MediaDirection.SENDRECV, MediaDirection.SENDONLY ].forEach(direction => {
+                                remoteSdp.media[mid] = remoteSdp.media[mid]
+                                    .replace(`a=${direction}`, `a=${desiredDirection}`);
+                            });
+
+                        // Jvb connections will have direction set to 'sendonly' when the remote ssrc is present.
+                        } else {
+                            // Change the direction to "inactive" always for jvb connection.
+                            remoteSdp.media[mid] = remoteSdp.media[mid]
+                                .replace(`a=${MediaDirection.SENDONLY}`, `a=${MediaDirection.INACTIVE}`);
                         }
                     }
+                });
+            } else {
+                lines.forEach(line => {
+                    remoteSdp.media[idx]
+                        = remoteSdp.media[idx].replace(`${line}\r\n`, '');
                 });
             }
         });
@@ -1779,6 +1809,18 @@ export default class JingleSessionPC extends JingleSession {
 
         addSsrcInfo.forEach((lines, idx) => {
             remoteSdp.media[idx] += lines;
+
+            // Make sure to change the direction to 'sendrecv/sendonly' only for p2p connections. For jvb connections,
+            // a new m-line is added for the new remote sources.
+            if (this.isP2P && this.usesUnifiedPlan) {
+                const mediaType = SDPUtil.parseMLine(remoteSdp.media[idx].split('\r\n')[0])?.media;
+                const desiredDirection = this.peerconnection.getDesiredMediaDirection(mediaType, true);
+
+                [ MediaDirection.RECVONLY, MediaDirection.INACTIVE ].forEach(direction => {
+                    remoteSdp.media[idx] = remoteSdp.media[idx]
+                        .replace(`a=${direction}`, `a=${desiredDirection}`);
+                });
+            }
         });
         remoteSdp.raw = remoteSdp.session + remoteSdp.media.join('');
 

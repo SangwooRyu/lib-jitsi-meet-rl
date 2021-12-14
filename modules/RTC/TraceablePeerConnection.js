@@ -458,8 +458,7 @@ TraceablePeerConnection.prototype.getConnectionState = function() {
  * connection.
  * @private
  */
-TraceablePeerConnection.prototype._getDesiredMediaDirection = function(
-        mediaType) {
+TraceablePeerConnection.prototype._getDesiredMediaDirection = function(mediaType, isAddOperation = false) {
     const hasLocalSource = this.hasAnyTracksOfType(mediaType);
 
     if (this._usesUnifiedPlan) {
@@ -1099,21 +1098,11 @@ TraceablePeerConnection.prototype._removeRemoteTrackById = function(
 };
 
 /**
- * @typedef {Object} SSRCGroupInfo
- * @property {Array<number>} ssrcs group's SSRCs
- * @property {string} semantics
- */
-/**
- * @typedef {Object} TrackSSRCInfo
- * @property {Array<number>} ssrcs track's SSRCs
- * @property {Array<SSRCGroupInfo>} groups track's SSRC groups
- */
-/**
  * Returns map with keys msid and <tt>TrackSSRCInfo</tt> values.
  * @param {Object} desc the WebRTC SDP instance.
  * @return {Map<string,TrackSSRCInfo>}
  */
-function extractSSRCMap(desc) {
+TraceablePeerConnection.prototype._extractSSRCMap = function(desc) {
     /**
      * Track SSRC infos mapped by stream ID (msid)
      * @type {Map<string,TrackSSRCInfo>}
@@ -2681,7 +2670,7 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
                     dumpSDP(resultSdp));
             }
 
-            const ssrcMap = extractSSRCMap(resultSdp);
+            const ssrcMap = this._extractSSRCMap(resultSdp);
 
             logger.debug('Got local SSRCs MAP: ', ssrcMap);
             this._processLocalSSRCsMap(ssrcMap);
