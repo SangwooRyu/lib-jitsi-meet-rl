@@ -7,6 +7,10 @@ const XMPPEvents = {
     // Designates an event indicating that the focus has asked us to mute our
     // audio.
     AUDIO_MUTED_BY_FOCUS: 'xmpp.audio_muted_by_focus',
+
+    // Designates an event indicating that the focus has asked us to disable our
+    // camera.
+    VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus',
     AUTHENTICATION_REQUIRED: 'xmpp.authentication_required',
     BRIDGE_DOWN: 'xmpp.bridge_down',
 
@@ -49,6 +53,10 @@ const XMPPEvents = {
     // Designates an event indicating that the media (ICE) connection failed.
     // This should go to the RTC module.
     CONNECTION_ICE_FAILED: 'xmpp.connection.ice.failed',
+
+    // Designates an event indicating that the call has been migrated to a different
+    // bridge and that the client needs to be restarted for a successful transition.
+    CONNECTION_RESTARTED: 'xmpp.connection.restart',
 
     /**
      * Designates an event indicating connection status changes.
@@ -121,6 +129,9 @@ const XMPPEvents = {
 
     // Designates an event indicating that the XMPP MUC was destroyed.
     MUC_DESTROYED: 'xmpp.muc_destroyed',
+
+    // Designates an event indicating that we are currently in process of joining the XMPP MUC.
+    MUC_JOIN_IN_PROGRESS: 'xmpp.muc_join_in_progress',
 
     // Designates an event indicating that we have joined the XMPP MUC.
     MUC_JOINED: 'xmpp.muc_joined',
@@ -245,6 +256,36 @@ const XMPPEvents = {
      */
     PARTICIPANT_LOG_RECEIVED: 'xmpp.participant_log_received',
 
+    /**
+     * Event fired when we receive a message for AV moderation approved for the local participant.
+     */
+    AV_MODERATION_APPROVED: 'xmpp.av_moderation.approved',
+
+    /**
+    * Event fired when we receive a message for AV moderation rejected for the local participant.
+    */
+    AV_MODERATION_REJECTED: 'xmpp.av_moderation.rejected',
+
+    /**
+     * Event fired when we receive a message for AV moderation.
+     */
+    AV_MODERATION_RECEIVED: 'xmpp.av_moderation.received',
+
+    /**
+     * Event fired when the moderation enable/disable changes.
+     */
+    AV_MODERATION_CHANGED: 'xmpp.av_moderation.changed',
+
+    /**
+     * Event fired when we receive message that a new jid was approved.
+     */
+    AV_MODERATION_PARTICIPANT_APPROVED: 'xmpp.av_moderation.participant.approved',
+
+    /**
+     * Event fired when we receive message that a new jid was approved.
+     */
+    AV_MODERATION_PARTICIPANT_REJECTED: 'xmpp.av_moderation.participant.rejected',
+
     // Designates an event indicating that we should join the conference with
     // audio and/or video muted.
     START_MUTED_FROM_FOCUS: 'xmpp.start_muted_from_focus',
@@ -315,11 +356,34 @@ const XMPPEvents = {
 
     NOTICE_MESSAGE: 'xmpp.notice_message',
 
-    HANGUP_ALL_MESSAGE_RECEIVED: 'xmpp.hangup_all_message_received',
+    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled',
 
-    // start of added portion
-    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled'
-    // end of added portion
+    // Designates an event indicating that random-selection has started.
+    NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
+
+    // Designates an event indicating that random-selection has finished.
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    // Designates an event indicating that timer has started.
+    NOTIFY_TIMER_STARTED: 'xmpp.notify_timer_started',
+    
+    // Designates an event indicating that birthday hat is to put on.
+    NOTIFY_BIRTHDAY_HAT_ON: 'xmpp.birthday_hat_on',
+
+    // Designates an event indicating that timer has finished.
+    NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
+
+    NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
+
+    PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
+
+    RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
+
+    SHOW_BIRTHDAY_ALERT: 'xmpp.show_birthday_alert',
+
+    PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated',
+
+    FACE_DETECT_ENABLED: 'xmpp.face_detect_enabled',
 };
 
 module.exports = XMPPEvents;

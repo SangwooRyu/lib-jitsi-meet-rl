@@ -31,6 +31,11 @@ export const CONFERENCE_ERROR = 'conference.error';
 export const CONFERENCE_FAILED = 'conference.failed';
 
 /**
+ * Indicates that conference is in progress of joining.
+ */
+export const CONFERENCE_JOIN_IN_PROGRESS = 'conference.join_in_progress';
+
+/**
  * Indicates that conference has been joined. The event does NOT provide any
  * parameters to its listeners.
  */
@@ -40,6 +45,11 @@ export const CONFERENCE_JOINED = 'conference.joined';
  * Indicates that conference has been left.
  */
 export const CONFERENCE_LEFT = 'conference.left';
+
+/**
+ * Indicates that the conference unique identifier has been set.
+ */
+export const CONFERENCE_UNIQUE_ID_SET = 'conference.unique_id_set';
 
 /**
  * Indicates that the connection to the conference has been established
@@ -91,6 +101,11 @@ export const DTMF_SUPPORT_CHANGED = 'conference.dtmfSupportChanged';
  * channel.
  */
 export const ENDPOINT_MESSAGE_RECEIVED = 'conference.endpoint_message_received';
+
+/**
+ * Indicates that a message for the remote endpoint statistics has been received on the bridge channel.
+ */
+export const ENDPOINT_STATS_RECEIVED = 'conference.endpoint_stats_received';
 
 /**
  * NOTE This is lib-jitsi-meet internal event and can be removed at any time !
@@ -179,6 +194,12 @@ export const NO_AUDIO_INPUT = 'conference.no_audio_input';
  * Event indicates that the current microphone used by the conference is noisy.
  */
 export const NOISY_MIC = 'conference.noisy_mic';
+
+/**
+ * Indicates that a message from the local user or from the Prosody backend
+ * was received on the data channel.
+ */
+export const NON_PARTICIPANT_MESSAGE_RECEIVED = 'conference.non_participant_message_received';
 
 /**
  * New private text message was received.
@@ -377,6 +398,27 @@ export const TIME_REMAINED = 'conference.time_remained';
 
 export const USER_DEVICE_ACCESS_DISABLED = 'conference.user_device_access_disabled';
 
+export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selection_started';
+
+export const RANDOM_SELECTION_COUNTDOWN = 'conference.random_selection_countdown';
+
+export const PIN_RANDOM_PARTICIPANT = 'conference.pin_random_participant';
+
+export const NOTIFY_RANDOM_SELECTION_FINISHED = 'conference.notify_random_selection_finished';
+
+export const SHOW_BIRTHDAY_ALERT = 'conference.show_birthday_alert';
+
+export const PARTICIPANT_BIRTHDAY_FLAG_UPDATED = 'conference.birthday_flag_updated';
+
+// Notifies timer started.
+export const NOTIFY_TIMER_STARTED = 'conference.notify_timer_started';
+
+// Notifies timer finished.
+export const NOTIFY_TIMER_FINISHED = 'conference.notify_timer_finished';
+
+// Notifies birthdayhat on participant.
+export const NOTIFY_BIRTHDAY_HAT_ON = 'conference.notify_birthday_hat_on';
+
 export const AUDIO_MUTED_BY_FOCUS = 'conference.audio_muted_by_focus';
 
 export const VIDEO_MUTED_BY_FOCUS = 'conference.video_muted_by_focus';
@@ -387,4 +429,50 @@ export const ACK_VIDEO_MUTED_BY_FOCUS = 'conference.ack_video_muted_by_focus';
 
 export const NOTICE_MESSAGE = 'conference.notice_message';
 
-export const HANGUP_ALL_MESSAGE_RECEIVED = 'conference.hangup_all_message_received';
+/*
+ * The local participant was approved to be able to unmute.
+ * @param {options} event - {
+ *     {MediaType} mediaType
+ * }.
+ */
+export const AV_MODERATION_APPROVED = 'conference.av_moderation.approved';
+
+/**
+ * The local participant was blocked to be able to unmute.
+ * @param {options} event - {
+ *     {MediaType} mediaType
+ * }.
+ */
+export const AV_MODERATION_REJECTED = 'conference.av_moderation.rejected';
+
+/**
+ * AV Moderation was enabled/disabled. The actor is the participant that is currently in the meeting,
+ * or undefined if that participant has left the meeting.
+ *
+ * @param {options} event - {
+ *     {boolean} enabled,
+ *     {MediaType} mediaType,
+ *     {JitsiParticipant} actor
+ * }.
+ */
+export const AV_MODERATION_CHANGED = 'conference.av_moderation.changed';
+
+/**
+ * AV Moderation, report for user being approved to unmute.
+ * @param {options} event - {
+ *     {JitsiParticipant} participant,
+ *     {MediaType} mediaType
+ * }.
+ */
+export const AV_MODERATION_PARTICIPANT_APPROVED = 'conference.av_moderation.participant.approved';
+
+/**
+ * AV Moderation, report for user being blocked to unmute.
+ * @param {options} event - {
+ *     {JitsiParticipant} participant,
+ *     {MediaType} mediaType
+ * }.
+ */
+export const AV_MODERATION_PARTICIPANT_REJECTED = 'conference.av_moderation.participant.rejected';
+
+export const FACE_DETECT_ENABLED = 'conference.face_detect.enabled';

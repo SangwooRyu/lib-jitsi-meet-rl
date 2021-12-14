@@ -86,15 +86,18 @@ export default class Lobby {
      * Leaves the lobby room.
      * @private
      */
-    _leaveLobbyRoom() {
+    leave() {
         if (this.lobbyRoom) {
-            this.lobbyRoom.leave()
+            return this.lobbyRoom.leave()
                 .then(() => {
                     this.lobbyRoom = undefined;
                     logger.info('Lobby room left!');
                 })
                 .catch(() => {}); // eslint-disable-line no-empty-function
         }
+
+        return Promise.reject(
+            new Error('The lobby has already been left'));
     }
 
     /**
@@ -153,8 +156,7 @@ export default class Lobby {
 
         if (displayName) {
             // remove previously set nickname
-            this.lobbyRoom.removeFromPresence('nick');
-            this.lobbyRoom.addToPresence('nick', {
+            this.lobbyRoom.addOrReplaceInPresence('nick', {
                 attributes: { xmlns: 'http://jabber.org/protocol/nick' },
                 value: displayName
             });
@@ -224,10 +226,8 @@ export default class Lobby {
                 (roomJid, from, txt, invitePassword) => {
                     logger.debug(`Received approval to join ${roomJid} ${from} ${txt}`);
                     if (roomJid === this.mainRoom.roomjid) {
-                        // we are now allowed let's join and leave lobby
+                        // we are now allowed, so let's join
                         this.mainRoom.join(invitePassword);
-
-                        this._leaveLobbyRoom();
                     }
                 });
             this.lobbyRoom.addEventListener(
@@ -251,7 +251,7 @@ export default class Lobby {
             this.mainRoom.addEventListener(
                 XMPPEvents.MUC_JOINED,
                 () => {
-                    this._leaveLobbyRoom();
+                    this.leave();
                 });
         }
 
@@ -261,9 +261,8 @@ export default class Lobby {
 
                 // send our email, as we do not handle this on initial presence we need a second one
                 if (email && !isModerator) {
-                    this.lobbyRoom.removeFromPresence(EMAIL_COMMAND);
-                    this.lobbyRoom.addToPresence(EMAIL_COMMAND, { value: email });
-                    this.lobbyRoom.sendPresence();
+                    this.lobbyRoom.addOrReplaceInPresence(EMAIL_COMMAND, { value: email })
+                        && this.lobbyRoom.sendPresence();
                 }
             });
             this.lobbyRoom.addEventListener(XMPPEvents.ROOM_JOIN_ERROR, reject);
@@ -303,13 +302,21 @@ export default class Lobby {
             return;
         }
 
+        // Get the main room JID. If we are in a breakout room we'll use the main
+        // room's lobby.
+        let mainRoomJid = this.mainRoom.roomjid;
+
+        if (this.mainRoom.getBreakoutRoomsHelper().isBreakoutRoom()) {
+            mainRoomJid = this.mainRoom.getBreakoutRoomsHelper().getMainRoomJid();
+        }
+
         const memberRoomJid = Object.keys(this.lobbyRoom.members)
             .find(j => Strophe.getResourceFromJid(j) === id);
 
         if (memberRoomJid) {
             const jid = this.lobbyRoom.members[memberRoomJid].jid;
             const msgToSend
-                = $msg({ to: this.mainRoom.roomjid })
+                = $msg({ to: mainRoomJid })
                     .c('x', { xmlns: 'http://jabber.org/protocol/muc#user' })
                     .c('invite', { to: jid });
 
