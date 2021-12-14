@@ -1,7 +1,6 @@
 /* global __filename */
 
 import { getLogger } from 'jitsi-meet-logger';
-import MediaDirection from '../../service/RTC/MediaDirection';
 
 import MediaDirection from '../../service/RTC/MediaDirection';
 import * as MediaType from '../../service/RTC/MediaType';

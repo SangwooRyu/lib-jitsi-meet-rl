@@ -1,6 +1,5 @@
 import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
-import MediaDirection from '../../service/RTC/MediaDirection';
 
 import MediaDirection from '../../service/RTC/MediaDirection';
 import * as MediaType from '../../service/RTC/MediaType';
