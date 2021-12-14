@@ -1,5 +1,6 @@
 import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
+import MediaDirection from '../../service/RTC/MediaDirection';
 
 import * as MediaType from '../../service/RTC/MediaType';
 import RTCEvents from '../../service/RTC/RTCEvents';
@@ -202,7 +203,7 @@ export class TPCUtils {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added
             // to the peerconnection before a session-initiate is sent over to the peer.
             const transceiverInit = {
-                direction: 'sendrecv',
+                direction: MediaDirection.SENDRECV,
                 streams: [ localTrack.getOriginalStream() ],
                 sendEncodings: []
             };
@@ -248,7 +249,7 @@ export class TPCUtils {
 
                 return this.setEncodings(localTrack).then(() => {
                     this.pc.localTracks.set(localTrack.rtcId, localTrack);
-                    transceiver.direction = 'sendrecv';
+                    transceiver.direction = MediaDirection.SENDRECV;
                 });
             }
 
@@ -414,12 +415,12 @@ export class TPCUtils {
             if (active) {
                 // The first transceiver is for the local track and only this one can be set to 'sendrecv'
                 if (idx === 0 && localTracks.length) {
-                    transceiver.direction = 'sendrecv';
+                    transceiver.direction = MediaDirection.SENDRECV;
                 } else {
-                    transceiver.direction = 'recvonly';
+                    transceiver.direction = MediaDirection.RECVONLY;
                 }
             } else {
-                transceiver.direction = 'inactive';
+                transceiver.direction = MediaDirection.INACTIVE;
             }
         });
     }

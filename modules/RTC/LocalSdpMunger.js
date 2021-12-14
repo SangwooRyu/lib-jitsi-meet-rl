@@ -1,6 +1,7 @@
 /* global __filename */
 
 import { getLogger } from 'jitsi-meet-logger';
+import MediaDirection from '../../service/RTC/MediaDirection';
 
 import * as MediaType from '../../service/RTC/MediaType';
 import { SdpTransformWrap } from '../xmpp/SdpTransformUtil';
@@ -105,7 +106,7 @@ export default class LocalSdpMunger {
             // NOTE the SDP produced here goes only to Jicofo and is never set
             // as localDescription. That's why
             // TraceablePeerConnection.mediaTransferActive is ignored here.
-            videoMLine.direction = 'sendrecv';
+            videoMLine.direction = MediaDirection.SENDRECV;
 
             // Check if the recvonly has MSID
             const primarySSRC = requiredSSRCs[0];

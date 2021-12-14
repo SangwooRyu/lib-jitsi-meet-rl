@@ -544,8 +544,11 @@ export default class JingleSessionPC extends JingleSession {
             const state = this.peerconnection.signalingState;
             const remoteDescription = this.peerconnection.remoteDescription;
 
-            if (browser.usesUnifiedPlan() && state === 'stable'
-                && remoteDescription && typeof remoteDescription.sdp === 'string') {
+            if (this._usesUnifiedPlan
+                && !this.isP2P
+                && state === 'stable'
+                && remoteDescription
+                && typeof remoteDescription.sdp === 'string') {
                 logger.debug(`onnegotiationneeded fired on ${this.peerconnection} in state: ${state}`);
                 const workFunction = finishedCallback => {
                     const oldSdp = new SDP(this.peerconnection.localDescription.sdp);
@@ -1728,7 +1731,7 @@ export default class JingleSessionPC extends JingleSession {
      *  in removeSsrcInfo
      */
     _processRemoteRemoveSource(removeSsrcInfo) {
-        const remoteSdp = browser.usesPlanB()
+        const remoteSdp = !this.usesUnifiedPlan
             ? new SDP(this.peerconnection.remoteDescription.sdp)
             : new SDP(this.peerconnection.peerconnection.remoteDescription.sdp);
 
@@ -1736,7 +1739,7 @@ export default class JingleSessionPC extends JingleSession {
             // eslint-disable-next-line no-param-reassign
             lines = lines.split('\r\n');
             lines.pop(); // remove empty last element;
-            if (browser.usesPlanB()) {
+            if (!this.usesUnifiedPlan) {
                 lines.forEach(line => {
                     remoteSdp.media[idx]
                         = remoteSdp.media[idx].replace(`${line}\r\n`, '');
@@ -1885,7 +1888,7 @@ export default class JingleSessionPC extends JingleSession {
         const workFunction = finishedCallback => {
             const oldLocalSdp = this.peerconnection.localDescription.sdp;
 
-            if (browser.usesPlanB()) {
+            if (!this.usesUnifiedPlan) {
                 // NOTE the code below assumes that no more than 1 video track
                 // can be added to the peer connection.
                 // Transition from camera to desktop share

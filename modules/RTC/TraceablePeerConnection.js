@@ -5,6 +5,7 @@ import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
 
 import * as CodecMimeType from '../../service/RTC/CodecMimeType';
+import MediaDirection from '../../service/RTC/MediaDirection';
 import * as MediaType from '../../service/RTC/MediaType';
 import RTCEvents from '../../service/RTC/RTCEvents';
 import * as SignalingEvents from '../../service/RTC/SignalingEvents';
@@ -61,6 +62,7 @@ const SD_BITRATE = 700000;
  * @param {string} options.preferredCodec the mime type of the codec that needs
  * to be made the preferred codec for the connection.
  * @param {boolean} options.startSilent If set to 'true' no audio will be sent or received.
+ * @param {boolean} options.usesUnifiedPlan Indicates if the  browser is running in unified plan mode.
  *
  * FIXME: initially the purpose of TraceablePeerConnection was to be able to
  * debug the peer connection. Since many other responsibilities have been added
@@ -252,6 +254,11 @@ export default function TraceablePeerConnection(
     this.statsinterval = null;
 
     /**
+    * Flag used to indicate if the browser is running in unified  plan mode.
+    */
+    this._usesUnifiedPlan = options.usesUnifiedPlan;
+
+    /**
      * @type {number} The max number of stats to keep in this.stats. Limit to
      * 300 values, i.e. 5 minutes; set to 0 to disable
      */
@@ -264,7 +271,7 @@ export default function TraceablePeerConnection(
         {
             numOfLayers: SIM_LAYER_RIDS.length,
             explodeRemoteSimulcast: false,
-            usesUnifiedPlan: browser.usesUnifiedPlan()
+            usesUnifiedPlan: this._usesUnifiedPlan
         });
     this.sdpConsistency = new SdpConsistency(this.toString());
 
@@ -308,21 +315,20 @@ export default function TraceablePeerConnection(
         }
     };
 
-    // Use stream events in plan-b and track events in unified plan.
-    if (browser.usesPlanB()) {
-        this.peerconnection.onaddstream
-            = event => this._remoteStreamAdded(event.stream);
-        this.peerconnection.onremovestream
-            = event => this._remoteStreamRemoved(event.stream);
-    } else {
-        this.peerconnection.ontrack = event => {
-            const stream = event.streams[0];
+    // Use track events when browser is running in unified plan mode and stream events in plan-b mode.
+    if (this._usesUnifiedPlan) {
+        this.onTrack = evt => {
+            const stream = evt.streams[0];
 
-            this._remoteTrackAdded(stream, event.track, event.transceiver);
-            stream.onremovetrack = evt => {
-                this._remoteTrackRemoved(stream, evt.track);
-            };
+            this._remoteTrackAdded(stream, evt.track, evt.transceiver);
+            stream.addEventListener('removetrack', e => {
+                this._remoteTrackRemoved(stream, e.track);
+            });
         };
+        this.peerconnection.addEventListener('track', this.onTrack);
+    } else {
+        this.peerconnection.onaddstream = event => this._remoteStreamAdded(event.stream);
+        this.peerconnection.onremovestream = event => this._remoteStreamRemoved(event.stream);
     }
     this.onsignalingstatechange = null;
     this.peerconnection.onsignalingstatechange = event => {
@@ -454,18 +460,21 @@ TraceablePeerConnection.prototype.getConnectionState = function() {
  */
 TraceablePeerConnection.prototype._getDesiredMediaDirection = function(
         mediaType) {
-    let mediaTransferActive = true;
+    const hasLocalSource = this.hasAnyTracksOfType(mediaType);
 
-    if (mediaType === MediaType.AUDIO) {
-        mediaTransferActive = this.audioTransferActive;
-    } else if (mediaType === MediaType.VIDEO) {
-        mediaTransferActive = this.videoTransferActive;
+    if (this._usesUnifiedPlan) {
+        return isAddOperation
+            ? hasLocalSource ? MediaDirection.SENDRECV : MediaDirection.SENDONLY
+            : hasLocalSource ? MediaDirection.RECVONLY : MediaDirection.INACTIVE;
     }
+
+    const mediaTransferActive = mediaType === MediaType.AUDIO ? this.audioTransferActive : this.videoTransferActive;
+
     if (mediaTransferActive) {
-        return this.hasAnyTracksOfType(mediaType) ? 'sendrecv' : 'recvonly';
+        return hasLocalSource ? MediaDirection.SENDRECV : MediaDirection.RECVONLY;
     }
 
-    return 'inactive';
+    return MediaDirection.INACTIVE;
 };
 
 /**
@@ -752,12 +761,14 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
         return;
     }
 
-    const remoteSDP = browser.usesPlanB()
-        ? new SDP(this.remoteDescription.sdp)
-        : new SDP(this.peerconnection.remoteDescription.sdp);
+    const remoteSDP = this._usesUnifiedPlan
+        ? new SDP(this.peerconnection.remoteDescription.sdp)
+        : new SDP(this.remoteDescription.sdp);
     let mediaLines;
 
-    if (browser.usesUnifiedPlan()) {
+    // In unified plan mode, find the matching mline using 'mid' if its availble, otherwise use the
+    // 'msid' attribute of the stream.
+    if (this._usesUnifiedPlan) {
         if (transceiver && transceiver.mid) {
             const mid = transceiver.mid;
 
@@ -1128,7 +1139,20 @@ function extractSSRCMap(desc) {
         return ssrcMap;
     }
 
-    for (const mLine of session.media) {
+    let media = session.media;
+
+    // For unified plan clients, only the first audio and video mlines will have ssrcs for the local sources.
+    // The rest of the m-lines are for the recv-only sources, one for each remote source.
+    if (this._usesUnifiedPlan) {
+        media = [];
+        [ MediaType.AUDIO, MediaType.VIDEO ].forEach(mediaType => {
+            const mLine = session.media.find(m => m.type === mediaType);
+
+            mLine && media.push(mLine);
+        });
+    }
+
+    for (const mLine of media) {
         if (!Array.isArray(mLine.ssrcs)) {
             continue; // eslint-disable-line no-continue
         }
@@ -1155,25 +1179,31 @@ function extractSSRCMap(desc) {
                 }
             }
         }
-        for (const ssrc of mLine.ssrcs) {
-            if (ssrc.attribute !== 'msid') {
-                continue; // eslint-disable-line no-continue
-            }
 
-            const msid = ssrc.value;
-            let ssrcInfo = ssrcMap.get(msid);
+        let ssrcs = mLine.ssrcs;
+
+        // Filter the ssrcs with 'msid' attribute for plan-b clients and 'cname' for unified-plan clients.
+        ssrcs = this._usesUnifiedPlan
+            ? ssrcs.filter(s => s.attribute === 'cname')
+            : ssrcs.filter(s => s.attribute === 'msid');
+
+        for (const ssrc of ssrcs) {
+            // Use the mediaType as key for the source map for unified plan clients since msids are not part of
+            // the standard and the unified plan SDPs do not have a proper msid attribute for the sources.
+            // Also the ssrcs for sources do not change for Unified plan clients since RTCRtpSender#replaceTrack is
+            // used for switching the tracks so it is safe to use the mediaType as the key for the TrackSSRCInfo map.
+            const key = this._usesUnifiedPlan ? mLine.type : ssrc.value;
+            const ssrcNumber = ssrc.id;
+            let ssrcInfo = ssrcMap.get(key);
 
             if (!ssrcInfo) {
                 ssrcInfo = {
                     ssrcs: [],
                     groups: [],
-                    msid
+                    msid: key
                 };
-                ssrcMap.set(msid, ssrcInfo);
+                ssrcMap.set(key, ssrcInfo);
             }
-
-            const ssrcNumber = ssrc.id;
-
             ssrcInfo.ssrcs.push(ssrcNumber);
 
             if (groupsMap.has(ssrcNumber)) {
@@ -1321,11 +1351,11 @@ const enforceSendRecv = function(localDescription, options) {
     const audioMedia = transformer.selectMedia('audio');
     let changed = false;
 
-    if (audioMedia && audioMedia.direction !== 'sendrecv') {
+    if (audioMedia && audioMedia.direction !== MediaDirection.SENDRECV) {
         if (options.startSilent) {
-            audioMedia.direction = 'inactive';
+            audioMedia.direction = MediaDirection.INACTIVE;
         } else {
-            audioMedia.direction = 'sendrecv';
+            audioMedia.direction = MediaDirection.SENDRECV;
         }
 
         changed = true;
@@ -1333,8 +1363,8 @@ const enforceSendRecv = function(localDescription, options) {
 
     const videoMedia = transformer.selectMedia('video');
 
-    if (videoMedia && videoMedia.direction !== 'sendrecv') {
-        videoMedia.direction = 'sendrecv';
+    if (videoMedia && videoMedia.direction !== MediaDirection.SENDRECV) {
+        videoMedia.direction = MediaDirection.SENDRECV;
         changed = true;
     }
 
@@ -1433,8 +1463,9 @@ const getters = {
 
         this.trace('getLocalDescription::preTransform', dumpSDP(desc));
 
-        // if we're running on FF, transform to Plan B first.
-        if (browser.usesUnifiedPlan()) {
+        // If the browser is running in unified plan mode and this is a jvb connection,
+        // transform the SDP to Plan B first.
+        if (this._usesUnifiedPlan && !this.isP2P) {
             desc = this.interop.toPlanB(desc);
             this.trace('getLocalDescription::postTransform (Plan B)',
                 dumpSDP(desc));
@@ -1442,7 +1473,7 @@ const getters = {
             desc = this._injectSsrcGroupForUnifiedSimulcast(desc);
             this.trace('getLocalDescription::postTransform (inject ssrc group)',
                 dumpSDP(desc));
-        } else {
+        } else if (!this._usesUnifiedPlan) {
             if (browser.doesVideoMuteByStreamRemove()) {
                 desc = this.localSdpMunger.maybeAddMutedLocalVideoTracksToSDP(desc);
                 logger.debug(
@@ -1476,10 +1507,15 @@ const getters = {
         this.trace('getRemoteDescription::preTransform', dumpSDP(desc));
 
         // if we're running on FF, transform to Plan B first.
-        if (browser.usesUnifiedPlan()) {
-            desc = this.interop.toPlanB(desc);
-            this.trace(
-                'getRemoteDescription::postTransform (Plan B)', dumpSDP(desc));
+        if (!this._usesUnifiedPlan) {
+            if (this.isP2P) {
+                // Adjust the media direction for p2p based on whether a local source has been added.
+                desc = this._adjustRemoteMediaDirection(desc);
+            } else {
+                // If this is a jvb connection, transform the SDP to Plan B first.
+                desc = this.interop.toPlanB(desc);
+                this.trace('getRemoteDescription::postTransform (Plan B)', dumpSDP(desc));
+            }
         }
 
         return desc;
@@ -1573,14 +1609,16 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
     this.localTracks.set(rtcId, track);
 
     // For p2p unified case, use addTransceiver API to add the tracks on the peerconnection.
-    if (browser.usesUnifiedPlan() && this.isP2P) {
-        this.tpcUtils.addTrack(track, isInitiator);
+    if (this._usesUnifiedPlan) {
+        try {
+            this.tpcUtils.addTrack(track, isInitiator);
+        } catch (error) {
+            logger.error(`${this} Adding track=${track} failed: ${error?.message}`);
+
+            return Promise.reject(error);
+        }
     } else {
-        // In all other cases, i.e., plan-b and unified plan bridge case, use addStream API to
-        // add the track to the peerconnection.
-        // TODO - addTransceiver doesn't generate a MSID for the stream, which is needed for signaling
-        // the ssrc to Jicofo. Switch to using UUID as MSID when addTransceiver is used in Unified plan
-        // JVB connection case as well.
+        // Use addStream API for the plan-b case.
         const webrtcStream = track.getOriginalStream();
 
         if (webrtcStream) {
@@ -1594,7 +1632,7 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
         }
 
         // Muted video tracks do not have WebRTC stream
-        if (browser.usesPlanB() && browser.doesVideoMuteByStreamRemove()
+        if (browser.doesVideoMuteByStreamRemove()
                 && track.isVideoTrack() && track.isMuted()) {
             const ssrcInfo = this.generateNewStreamSSRCInfo(track);
 
@@ -1657,7 +1695,7 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
         return Promise.reject('Stream not found');
     }
 
-    if (browser.usesUnifiedPlan()) {
+    if (this._usesUnifiedPlan) {
         return this.tpcUtils.addTrackUnmute(track);
     }
 
@@ -1849,12 +1887,14 @@ TraceablePeerConnection.prototype.findSenderForTrack = function(track) {
  * renegotiation will be needed. Otherwise no renegotiation is needed.
  */
 TraceablePeerConnection.prototype.replaceTrack = function(oldTrack, newTrack) {
-    if (browser.usesUnifiedPlan()) {
-        return this.tpcUtils.replaceTrack(oldTrack, newTrack)
+    if (this._usesUnifiedPlan) {
+        logger.debug(`${this} TPC.replaceTrack using unified plan`);
 
-            // renegotiate when SDP is used for simulcast munging
-            .then(() => this.isSimulcastOn() && browser.usesSdpMungingForSimulcast());
+        // Renegotiate only in the case of P2P. We rely on 'negotiationeeded' to be fired for JVB.
+        return this.tpcUtils.replaceTrack(oldTrack, newTrack).then(() => this.isP2P);
     }
+
+    logger.debug(`${this} TPC.replaceTrack using plan B`);
 
     let promiseChain = Promise.resolve();
 
@@ -1888,19 +1928,18 @@ TraceablePeerConnection.prototype.removeTrackMute = function(localTrack) {
         return Promise.reject('Track not found in the peerconnection');
     }
 
-    if (browser.usesUnifiedPlan()) {
+    if (this._usesUnifiedPlan) {
         return this.tpcUtils.removeTrackMute(localTrack);
     }
 
     if (webRtcStream) {
-        logger.info(
-            `Removing ${localTrack} as mute from ${this}`);
+        logger.info(`${this} Removing track=${localTrack} as mute`);
         this._removeStream(webRtcStream);
 
         return Promise.resolve(true);
     }
 
-    logger.error(`removeStreamMute - no WebRTC stream for ${localTrack}`);
+    logger.error(`${this} removeStreamMute - no WebRTC stream for track=${localTrack}`);
 
     return Promise.reject('Stream not found');
 };
@@ -2005,6 +2044,35 @@ TraceablePeerConnection.prototype._adjustLocalMediaDirection = function(
     return localDescription;
 };
 
+/**
+ * Adjusts the media direction on the remote description based on availability of local and remote sources in a p2p
+ * media connection.
+ *
+ * @param {RTCSessionDescription} remoteDescription the WebRTC session description instance for the remote description.
+ * @returns the transformed remoteDescription.
+ * @private
+ */
+TraceablePeerConnection.prototype._adjustRemoteMediaDirection = function(remoteDescription) {
+    const transformer = new SdpTransformWrap(remoteDescription.sdp);
+
+    [ MediaType.AUDIO, MediaType.VIDEO ].forEach(mediaType => {
+        const media = transformer.selectMedia(mediaType);
+        const hasLocalSource = this.hasAnyTracksOfType(mediaType);
+        const hasRemoteSource = this.getRemoteTracks(null, mediaType).length > 0;
+
+        media.direction = hasLocalSource && hasRemoteSource
+            ? MediaDirection.SENDRECV
+            : hasLocalSource
+                ? MediaDirection.RECVONLY
+                : hasRemoteSource ? MediaDirection.SENDONLY : MediaDirection.INACTIVE;
+    });
+
+    return new RTCSessionDescription({
+        type: remoteDescription.type,
+        sdp: transformer.toRawSDP()
+    });
+};
+
 TraceablePeerConnection.prototype.setLocalDescription = function(description) {
     let localSdp = description;
 
@@ -2013,10 +2081,10 @@ TraceablePeerConnection.prototype.setLocalDescription = function(description) {
     // Munge the order of the codecs based on the preferences set through config.js
     localSdp = this._mungeCodecOrder(localSdp);
 
-    if (browser.usesPlanB()) {
+    if (!this._usesUnifiedPlan) {
         localSdp = this._adjustLocalMediaDirection(localSdp);
         localSdp = this._ensureSimulcastGroupIsLast(localSdp);
-    } else {
+    } else if (!this.isP2P) {
 
         // if we're using unified plan, transform to it first.
         localSdp = this.interop.toUnifiedPlan(localSdp);
@@ -2066,7 +2134,7 @@ TraceablePeerConnection.prototype.setAudioTransferActive = function(active) {
 
     this.audioTransferActive = active;
 
-    if (browser.usesUnifiedPlan()) {
+    if (this._usesUnifiedPlan) {
         this.tpcUtils.setAudioTransferActive(active);
 
         // false means no renegotiation up the chain which is not needed in the Unified mode
@@ -2137,7 +2205,7 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
     }
 
     const videoType = localVideoTrack.videoType;
-    const planBScreenSharing = browser.usesPlanB() && videoType === VideoType.DESKTOP;
+    const planBScreenSharing = !this.usesUnifiedPlan && videoType === VideoType.DESKTOP;
 
     // Apply the maxbitrates on the video track when one of the conditions is met.
     // 1. Max. bitrates for video are specified through videoQuality settings in config.js
@@ -2145,7 +2213,7 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
     // 3. The client is running in Unified plan mode.
     if (!((this.options.videoQuality && this.options.videoQuality.maxBitratesVideo)
         || (planBScreenSharing && this.options.capScreenshareBitrate)
-        || browser.usesUnifiedPlan())) {
+        || this._usesUnifiedPlan)) {
         return Promise.resolve();
     }
 
@@ -2220,7 +2288,7 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
     // eslint-disable-next-line no-param-reassign
     description = this._mungeCodecOrder(description);
 
-    if (browser.usesPlanB()) {
+    if (!this._usesUnifiedPlan) {
         // TODO the focus should squeze or explode the remote simulcast
         if (this.isSimulcastOn()) {
             // eslint-disable-next-line no-param-reassign
@@ -2232,7 +2300,7 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
 
         // eslint-disable-next-line no-param-reassign
         description = normalizePlanB(description);
-    } else {
+    } else if (!this.isP2P) {
         const currentDescription = this.peerconnection.remoteDescription;
 
         // eslint-disable-next-line no-param-reassign
@@ -2250,10 +2318,12 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
             this.trace(
                 'setRemoteDescription::postTransform (sim receive)',
                 dumpSDP(description));
-
-            // eslint-disable-next-line no-param-reassign
-            description = this.tpcUtils.ensureCorrectOrderOfSsrcs(description);
         }
+    }
+
+    if (this._usesUnifiedPlan) {
+        // eslint-disable-next-line no-param-reassign
+        description = this.tpcUtils.ensureCorrectOrderOfSsrcs(description);
     }
 
     return new Promise((resolve, reject) => {
@@ -2397,7 +2467,7 @@ TraceablePeerConnection.prototype.setVideoTransferActive = function(active) {
 
     this.videoTransferActive = active;
 
-    if (browser.usesUnifiedPlan()) {
+    if (this._usesUnifiedPlan) {
         this.tpcUtils.setVideoTransferActive(active);
 
         // false means no renegotiation up the chain which is not needed in the Unified mode
@@ -2563,7 +2633,7 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             this.trace(
                 `create${logName}OnSuccess::preTransform`, dumpSDP(resultSdp));
 
-            if (browser.usesPlanB()) {
+            if (!this.usesUnifiedPlan) {
                 // If there are no local video tracks, then a "recvonly"
                 // SSRC needs to be generated
                 if (!this.hasAnyTracksOfType(MediaType.VIDEO)

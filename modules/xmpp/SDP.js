@@ -1,5 +1,6 @@
 /* global $ */
 
+import MediaDirection from '../../service/RTC/MediaDirection';
 import browser from '../browser';
 
 import SDPUtil from './SDPUtil';
@@ -304,16 +305,16 @@ SDP.prototype.toJingle = function(elem, thecreator) {
 
                     // eslint-disable-next-line max-depth
                     switch (extmap.direction) {
-                    case 'sendonly':
+                    case MediaDirection.SENDONLY:
                         elem.attrs({ senders: 'responder' });
                         break;
-                    case 'recvonly':
+                    case MediaDirection.RECVONLY:
                         elem.attrs({ senders: 'initiator' });
                         break;
-                    case 'sendrecv':
+                    case MediaDirection.SENDRECV:
                         elem.attrs({ senders: 'both' });
                         break;
-                    case 'inactive':
+                    case MediaDirection.INACTIVE:
                         elem.attrs({ senders: 'none' });
                         break;
                     }
