@@ -2349,6 +2349,8 @@ export default class ChatRoom extends Listenable {
      * rejected.
      */
     leave() {
+        this.avModeration.dispose();
+        
         const promises = [];
 
         this.lobby?.lobbyRoom && promises.push(this.lobby.leave());
