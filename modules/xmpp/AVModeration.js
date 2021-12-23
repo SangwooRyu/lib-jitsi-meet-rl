@@ -22,12 +22,20 @@ export default class AVModeration {
         this._mainRoom = room;
 
         this._moderationEnabledByType = {
-            [MediaType.AUDIO]: false,
-            [MediaType.VIDEO]: false
+            audio: false,
+            video: false,
+            chat: false,
+            poll: false,
+            name: false
         };
 
-        this._whitelistAudio = [];
-        this._whitelistVideo = [];
+        this._whitelist = {
+            audio: [],
+            video: [],
+            chat: [],
+            poll: [],
+            name: []
+        };
 
         this._onMessage = this._onMessage.bind(this);
         this._xmpp.addListener(XMPPEvents.AV_MODERATION_RECEIVED, this._onMessage);
@@ -52,7 +60,7 @@ export default class AVModeration {
     /**
      * Enables or disables AV Moderation by sending a msg with command to the component.
      */
-    enable(state, mediaType) {
+    enable(state, kind) {
         if (!this.isSupported() || !this._mainRoom.isModerator()) {
             logger.error(`Cannot enable:${state} AV moderation supported:${this.isSupported()}, 
                 moderator:${this._mainRoom.isModerator()}`);
@@ -60,27 +68,19 @@ export default class AVModeration {
             return;
         }
 
-        if (state === this._moderationEnabledByType[mediaType]) {
-            logger.warn(`Moderation already in state:${state} for mediaType:${mediaType}`);
+        if (state === this._moderationEnabledByType[kind]) {
+            logger.warn(`Moderation already in state:${state} for kind:${kind}`);
 
             return;
         }
 
-        // send the enable/disable message
-        const msg = $msg({ to: this._xmpp.avModerationComponentAddress });
-
-        msg.c('av_moderation', {
-            enable: state,
-            mediaType
-        }).up();
-
-        this._xmpp.connection.send(msg);
+        this.send({ enable: state, kind });
     }
 
     /**
      * Approves that a participant can unmute by sending a msg with its jid to the component.
      */
-    approve(mediaType, jid) {
+    approve(kind, jid) {
         if (!this.isSupported() || !this._mainRoom.isModerator()) {
             logger.error(`Cannot approve in AV moderation supported:${this.isSupported()}, 
                 moderator:${this._mainRoom.isModerator()}`);
@@ -88,20 +88,13 @@ export default class AVModeration {
             return;
         }
 
-        // send a message to whitelist the jid and approve it to unmute
-        const msg = $msg({ to: this._xmpp.avModerationComponentAddress });
-
-        msg.c('av_moderation', {
-            mediaType,
-            jidToWhitelist: jid }).up();
-
-        this._xmpp.connection.send(msg);
+        this.send({ kind, jidToWhitelist: jid });
     }
 
     /**
      * Rejects that a participant can unmute by sending a msg with its jid to the component.
      */
-    reject(mediaType, jid) {
+    reject(kind, jid) {
         if (!this.isSupported() || !this._mainRoom.isModerator()) {
             logger.error(`Cannot reject in AV moderation supported:${this.isSupported()},
                 moderator:${this._mainRoom.isModerator()}`);
@@ -110,13 +103,13 @@ export default class AVModeration {
         }
 
         // send a message to remove from whitelist the jid and reject it to unmute
+        this.send({ kind, jidToBlacklist: jid });
+    }
+
+    send(message) {
         const msg = $msg({ to: this._xmpp.avModerationComponentAddress });
-
-        msg.c('av_moderation', {
-            mediaType,
-            jidToBlacklist: jid
-        }).up();
-
+        const jsonMsg = JSON.stringify(message);
+        msg.c('json-message', { xmlns: 'http://jitsi.org/jitmeet' }, jsonMsg);
         this._xmpp.connection.send(msg);
     }
 
@@ -126,37 +119,31 @@ export default class AVModeration {
      * @private
      */
     _onMessage(obj) {
-        const { removed, mediaType: media, enabled, approved, actor, whitelists: newWhitelists } = obj;
+        const { removed, kind, enabled, approved, actor, whitelists: newWhitelists } = obj;
 
         if (newWhitelists) {
-            const oldList = media === MediaType.AUDIO
-                ? this._whitelistAudio
-                : this._whitelistVideo;
-            const newList = Array.isArray(newWhitelists[media]) ? newWhitelists[media] : [];
+            const oldList = this._whitelist[kind];
+            const newList = newWhitelists[kind];
 
             if (removed) {
                 oldList.filter(x => !newList.includes(x))
                     .forEach(jid => this._xmpp.eventEmitter
-                        .emit(XMPPEvents.AV_MODERATION_PARTICIPANT_REJECTED, media, jid));
+                        .emit(XMPPEvents.AV_MODERATION_PARTICIPANT_REJECTED, kind, jid));
             } else {
                 newList.filter(x => !oldList.includes(x))
                     .forEach(jid => this._xmpp.eventEmitter
-                        .emit(XMPPEvents.AV_MODERATION_PARTICIPANT_APPROVED, media, jid));
+                        .emit(XMPPEvents.AV_MODERATION_PARTICIPANT_APPROVED, kind, jid));
             }
 
-            if (media === MediaType.AUDIO) {
-                this._whitelistAudio = newList;
-            } else {
-                this._whitelistVideo = newList;
-            }
-        } else if (enabled !== undefined && this._moderationEnabledByType[media] !== enabled) {
-            this._moderationEnabledByType[media] = enabled;
+            this._whitelist[kind] = newList;
+        } else if (enabled !== undefined && this._moderationEnabledByType[kind] !== enabled) {
+            this._moderationEnabledByType[kind] = enabled;
 
-            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_CHANGED, enabled, media, actor);
+            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_CHANGED, enabled, kind, actor);
         } else if (removed) {
-            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_REJECTED, media);
+            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_REJECTED, kind);
         } else if (approved) {
-            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_APPROVED, media);
+            this._xmpp.eventEmitter.emit(XMPPEvents.AV_MODERATION_APPROVED, kind);
         }
     }
 }
