@@ -1666,46 +1666,8 @@ JitsiConference.prototype.sendUserDeviceAccessConfiguration = function(userDevic
     }
 }
 
-/**
- * Disable chat for participant from this conference.
- * @param {string} id id of the participant to disable
- */
-JitsiConference.prototype.disableChatForParticipant = function(id) {
-    const participant = this.getParticipantById(id);
-
-    if (!participant) {
-        return;
-    }
-    this.room.disableChatForParticipant(participant.getJid());
-};
-
-/**
- * Enable chat for participant from this conference.
- * @param {string} id id of the participant to enable
- */
-JitsiConference.prototype.enableChatForParticipant = function(id) {
-    const participant = this.getParticipantById(id);
-
-    if (!participant) {
-        return;
-    }
-    this.room.enableChatForParticipant(participant.getJid());
-};
-
 JitsiConference.prototype.updateParticipantBirthdayHatFlag = function(id, hatOn) {
     this.room.sendMessage('hat', 'birthdayHatFlag', "{\"id\":\"" + id + "\",\"hatOn\":" + hatOn + "}");
-}
-
-/**
- * Enable chat for all participants from the conference.
- * @param {string} id id of the participant to enable
- */
-JitsiConference.prototype.enableChatForAll = function() {
-    this.room.enableChatForAll();
-};
-
-JitsiConference.prototype.disableChatForAll = function() {
-    this.room.disableChatForAll();
 }
 
 /**
