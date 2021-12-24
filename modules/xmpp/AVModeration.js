@@ -108,7 +108,11 @@ export default class AVModeration {
 
     send(message) {
         const msg = $msg({ to: this._xmpp.avModerationComponentAddress });
-        const jsonMsg = JSON.stringify(message);
+        const jsonMsg = JSON.stringify({
+            ...message,
+            type: 'av_moderation',
+            room: this._mainRoom.roomjid
+        });
         msg.c('json-message', { xmlns: 'http://jitsi.org/jitmeet' }, jsonMsg);
         this._xmpp.connection.send(msg);
     }
