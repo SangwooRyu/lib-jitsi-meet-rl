@@ -396,8 +396,6 @@ export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';
 
 export const TIME_REMAINED = 'conference.time_remained';
 
-export const USER_DEVICE_ACCESS_DISABLED = 'conference.user_device_access_disabled';
-
 export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selection_started';
 
 export const RANDOM_SELECTION_COUNTDOWN = 'conference.random_selection_countdown';

@@ -11,11 +11,12 @@ import GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import Listenable from '../util/Listenable';
 
 import AVModeration from './AVModeration';
-import BreakoutRoomsHelper from './BreakoutRoomsHelper';
+import BreakoutRooms from './BreakoutRooms';
 import Lobby from './Lobby';
 import XmppConnection from './XmppConnection';
 import Moderator from './moderator';
 import RandomUtil from '../util/RandomUtil';
+
 const logger = getLogger(__filename);
 
 export const parser = {
@@ -137,7 +138,7 @@ export default class ChatRoom extends Listenable {
             this.lobby = new Lobby(this);
         }
         this.avModeration = new AVModeration(this);
-        this.breakoutRooms = new BreakoutRoomsHelper(this);
+        this.breakoutRooms = new BreakoutRooms(this);
         this.initPresenceMap(options);
         this.lastPresences = {};
         this.phoneNumber = null;
@@ -302,7 +303,7 @@ export default class ChatRoom extends Listenable {
                 to: this.roomjid
             })
                 .c('query', { xmlns: Strophe.NS.DISCO_INFO });
-        //send the getInfo IQ tag we built above using the sendIQ helper function and its response is stored in result
+
         this.connection.sendIQ(getInfo, result => {
             const locked
                 = $(result).find('>query>feature[var="muc_passwordprotected"]')
@@ -356,26 +357,6 @@ export default class ChatRoom extends Listenable {
             } else {
                 logger.warn('No face detect enabled from backend');
             }
-
-            const userDeviceAccessDisabledStr
-                = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_userDeviceAccessDisabled"]>value');
-
-            // convert userDeviceAccessDisabledStr to boolean
-            let userDeviceAccessDisabledFlag; 
-            
-            // ejabberd is explicitly passing the values of string "1" or "0" for userDeviceAccessDisabledStr string
-            // these are for incoming new participants that use discoRoomInfo and get the values for the fields from ejabberd
-
-            if (userDeviceAccessDisabledStr.text() === "1") {
-                userDeviceAccessDisabledFlag = true;
-                // emit XMPP event to broadcast the value to all participants
-                // we want to emit toast message to participants only if the user device access is disabled (when first joining)
-                this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessDisabledFlag);
-            } else if (userDeviceAccessDisabledStr.text() == "0") {
-                userDeviceAccessDisabledFlag = false;
-                // since device access is not disabled here, we don't emit any toast message
-            }
-        
 
             const membersOnly = $(result).find('>query>feature[var="muc_membersonly"]').length === 1;
 
@@ -995,48 +976,7 @@ export default class ChatRoom extends Listenable {
             logger.error(`Error processing:${node.tagName} node.`, e);
         }
     }
-
-    /**
-     * Query if upload service is available
-     * 
-     */
-    isUploadServiceAvailable() {
-        const iqquery = $iq({ 
-            from: this.meetingId,
-            to: 'upload.vmeeting1.postech.ac.kr',
-            type: 'get',
-            id: RandomUtil.randomHexString(8).toLowerCase()
-        });
-        iqquery.c('query', { 'xmlns': Strophe.NS.DISCO_INFO});
-        this.connection.sendIQ(iqquery, result => {
-            console.log("Result of service discovery is: ", result);
-        });
-    }
-
-    requestAFileSlot(name, size) {
-        const iqquery = $iq({
-            from: this.meetingId,
-            to: 'upload.vmeeting1.postech.ac.kr',
-            type: 'get',
-            id: RandomUtil.randomHexString(8).toLowerCase()
-        });
-        iqquery.c('request', { xmlns: 'urn:xmpp:http:upload:0', filename: name, size: size});
-        this.connection.sendIQ(iqquery, result => {
-            console.log("Result of slot request is: ", result);
-        });
-
-    }
-
-    /**
-     * Uploading the file selected from the user in a chatroom to XMPP server
-     * @param {File} sharedFile 
-     */
-    uploadSharedFile(sharedFile) {
-        console.log("This function will upload the file shared by user: ", sharedFile);
-        this.isUploadServiceAvailable();
-        this.requestAFileSlot(sharedFile.name, sharedFile.size);
-    }
-    
+ 
     /**
      * Send text message to the other participants in the conference
      * @param message
@@ -1426,22 +1366,6 @@ export default class ChatRoom extends Listenable {
             } catch(err) {
                 console.error(err);
             }
-        }
-
-        // get the raw text (string) from the msg>userdeviceaccessdisabled element in message
-        let userDeviceAccessStr = $(msg).find('>userdeviceaccessdisabled').text();
-        let userDeviceAccessFlag;
-
-        // improvised check condition; we want to check for values "true" or "false" only and assign accordingly in onMessage which is for
-        // already existing participants
-        if(userDeviceAccessStr === "true") {
-            userDeviceAccessFlag = true;
-            // emit XMPP event to broadcast the value to all participants
-            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
-        } else if(userDeviceAccessStr === "false") {
-            userDeviceAccessFlag = false;
-            // emit XMPP event to broadcast the value to all participants
-            this.eventEmitter.emit(XMPPEvents.USER_DEVICE_ACCESS_DISABLED, userDeviceAccessFlag);
         }
 
         // xep-0203 delay

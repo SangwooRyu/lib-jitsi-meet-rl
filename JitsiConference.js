@@ -1657,15 +1657,6 @@ JitsiConference.prototype.kickParticipant = function(id, reason) {
     this.room.kick(participant.getJid(), reason);
 };
 
-JitsiConference.prototype.sendUserDeviceAccessConfiguration = function(userDeviceAccessDisabled) {
-    // call the sendMessage function from ChatRoom with element name userdeviceaccessdisabled
-    if(userDeviceAccessDisabled) {
-        this.room.sendMessage("true", 'userdeviceaccessdisabled');
-    } else {
-        this.room.sendMessage("false", 'userdeviceaccessdisabled');
-    }
-}
-
 JitsiConference.prototype.updateParticipantBirthdayHatFlag = function(id, hatOn) {
     this.room.sendMessage('hat', 'birthdayHatFlag', "{\"id\":\"" + id + "\",\"hatOn\":" + hatOn + "}");
 }
@@ -3919,17 +3910,6 @@ JitsiConference.prototype.lobbyApproveAccess = function(id) {
 };
 
 /**
- * Share a file into the conference meeting
- * @param sharedFile the file to be shared in the conference
- */
-JitsiConference.prototype.uploadSharedFile = function(sharedFile) {
-    console.log("I have reached lib-jitsi-meet");
-    if(this.room) {
-        this.room.uploadSharedFile(sharedFile);
-    }
-}
-
-/**
  * Returns <tt>true</tt> if AV Moderation support is enabled in the backend.
  *
  * @returns {boolean} whether AV Moderation is supported in the backend.
@@ -4015,6 +3995,6 @@ JitsiConference.prototype.avModerationReject = function(kind, id) {
  *
  * @returns {boolean} whether Breakout Rooms is supported in the backend.
  */
-JitsiConference.prototype.isBreakoutRoomsSupported = function() {
-    return Boolean(this.room?.getBreakoutRoomsHelper().isSupported());
+JitsiConference.prototype.getBreakoutRooms = function() {
+    return this.room?.getBreakoutRooms();
 };

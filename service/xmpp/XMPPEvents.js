@@ -356,8 +356,6 @@ const XMPPEvents = {
 
     NOTICE_MESSAGE: 'xmpp.notice_message',
 
-    USER_DEVICE_ACCESS_DISABLED: 'xmpp.user_device_access_disabled',
-
     // Designates an event indicating that random-selection has started.
     NOTIFY_RANDOM_SELECTION_STARTED: 'xmpp.notify_random_selection_started',
 
