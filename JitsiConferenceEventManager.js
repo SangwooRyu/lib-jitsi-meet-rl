@@ -175,9 +175,6 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     this.chatRoomForwarder.forward(XMPPEvents.NOTIFY_RANDOM_SELECTION_FINISHED,
         JitsiConferenceEvents.NOTIFY_RANDOM_SELECTION_FINISHED);
     
-    this.chatRoomForwarder.forward(XMPPEvents.SHOW_BIRTHDAY_ALERT,
-        JitsiConferenceEvents.SHOW_BIRTHDAY_ALERT);
-
     this.chatRoomForwarder.forward(XMPPEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED,
         JitsiConferenceEvents.PARTICIPANT_BIRTHDAY_FLAG_UPDATED);
     
