@@ -2009,7 +2009,7 @@ export default class ChatRoom extends Listenable {
     /**
      * @returns {BreakoutRoomsHelper}
      */
-    getBreakoutRoomsHelper() {
+    getBreakoutRooms() {
         return this.breakoutRooms;
     }
 

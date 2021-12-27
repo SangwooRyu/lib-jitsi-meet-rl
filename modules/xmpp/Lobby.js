@@ -306,8 +306,8 @@ export default class Lobby {
         // room's lobby.
         let mainRoomJid = this.mainRoom.roomjid;
 
-        if (this.mainRoom.getBreakoutRoomsHelper().isBreakoutRoom()) {
-            mainRoomJid = this.mainRoom.getBreakoutRoomsHelper().getMainRoomJid();
+        if (this.mainRoom.getBreakoutRooms().isBreakoutRoom()) {
+            mainRoomJid = this.mainRoom.getBreakoutRooms().getMainRoomJid();
         }
 
         const memberRoomJid = Object.keys(this.lobbyRoom.members)
