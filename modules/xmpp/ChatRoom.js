@@ -371,7 +371,7 @@ export default class ChatRoom extends Listenable {
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_isbreakout"]>value');
             const isBreakoutRoom = isBreakoutField?.text() || '0';
 
-            this.breakoutRooms.setIsBreakoutRoom(Boolean(parseInt(isBreakoutRoom)));
+            this.breakoutRooms._setIsBreakoutRoom(Boolean(parseInt(isBreakoutRoom)));
 
             const breakoutMainRoomField
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_breakout_main_room"]>value');
