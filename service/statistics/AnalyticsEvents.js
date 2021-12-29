@@ -418,17 +418,6 @@ export const createP2PEvent = function(action, attributes = {}) {
 };
 
 /**
- * Indicates that we received a remote command to mute.
- */
-export const createRemotelyMutedEvent = function(mediaType) {
-    return {
-        type: TYPE_OPERATIONAL,
-        action: 'remotely.muted',
-        mediaType
-    };
-};
-
-/**
  * Creates an event which contains RTP statistics such as RTT and packet loss.
  *
  * All average RTP stats are currently reported under 1 event name, but with
