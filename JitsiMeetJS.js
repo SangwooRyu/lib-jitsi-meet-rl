@@ -1,6 +1,4 @@
-/* global __filename */
-
-import Logger from 'jitsi-meet-logger';
+import Logger from '@jitsi/logger';
 
 import * as JitsiConferenceErrors from './JitsiConferenceErrors';
 import * as JitsiConferenceEvents from './JitsiConferenceEvents';
@@ -148,9 +146,7 @@ export default _mergeNamespaceAndModule({
         Statistics.init(options);
 
         // Configure the feature flags.
-        FeatureFlags.init({
-            sourceNameSignaling: options.sourceNameSignaling
-        });
+        FeatureFlags.init(options.flags || { });
 
         // Initialize global window.connectionTimes
         // FIXME do not use 'window'
@@ -166,23 +162,6 @@ export default _mergeNamespaceAndModule({
         if (options.enableWindowOnErrorHandler) {
             GlobalOnErrorHandler.addHandler(
                 this.getGlobalOnErrorHandler.bind(this));
-        }
-
-        // Log deployment-specific information, if available. Defined outside
-        // the application by individual deployments
-        const aprops = options.deploymentInfo;
-
-        if (aprops && Object.keys(aprops).length > 0) {
-            const logObject = {};
-
-            for (const attr in aprops) {
-                if (aprops.hasOwnProperty(attr)) {
-                    logObject[attr] = aprops[attr];
-                }
-            }
-
-            logObject.id = 'deployment_info';
-            Statistics.sendLog(JSON.stringify(logObject));
         }
 
         if (this.version) {

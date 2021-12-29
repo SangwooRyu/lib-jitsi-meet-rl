@@ -1,4 +1,4 @@
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 const logger = getLogger(__filename);
 
 import CodecMimeType from '../../service/RTC/CodecMimeType';
@@ -111,6 +111,9 @@ const SDPUtil = {
 
 
         return [ sctpPort, protocol, streamCount ];// SCTP port
+    },
+    parseSCTPPort(line) {
+        return line.substring(12);
     },
     buildRTPMap(el) {
         let line

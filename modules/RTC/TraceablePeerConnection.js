@@ -1,7 +1,5 @@
-/* global __filename, RTCSessionDescription */
-
+import { getLogger } from '@jitsi/logger';
 import { Interop } from '@jitsi/sdp-interop';
-import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
 
 import * as CodecMimeType from '../../service/RTC/CodecMimeType';
@@ -9,9 +7,11 @@ import MediaDirection from '../../service/RTC/MediaDirection';
 import * as MediaType from '../../service/RTC/MediaType';
 import RTCEvents from '../../service/RTC/RTCEvents';
 import * as SignalingEvents from '../../service/RTC/SignalingEvents';
+import { getSourceNameForJitsiTrack } from '../../service/RTC/SignalingLayer';
 import * as VideoType from '../../service/RTC/VideoType';
 import { SS_DEFAULT_FRAME_RATE } from '../RTC/ScreenObtainer';
 import browser from '../browser';
+import FeatureFlags from '../flags/FeatureFlags';
 import LocalSdpMunger from '../sdp/LocalSdpMunger';
 import RtxModifier from '../sdp/RtxModifier';
 import SDP from '../sdp/SDP';
@@ -898,7 +898,22 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
         return;
     }
 
-    logger.info(`${this} creating remote track[endpoint=${ownerEndpointId},ssrc=${trackSsrc},type=${mediaType}]`);
+
+    let sourceName;
+
+    if (FeatureFlags.isSourceNameSignalingEnabled()) {
+        sourceName = this.signalingLayer.getTrackSourceName(trackSsrc);
+
+        // If source name was not signaled, we'll generate one which allows testing signaling
+        // when mixing legacy(mobile) with new clients.
+        if (!sourceName) {
+            sourceName = getSourceNameForJitsiTrack(ownerEndpointId, mediaType, 0);
+        }
+    }
+
+    // eslint-disable-next-line no-undef
+    logger.info(`${this} creating remote track[endpoint=${ownerEndpointId},ssrc=${trackSsrc},`
+        + `type=${mediaType},sourceName=${sourceName}]`);
 
     const peerMediaInfo
         = this.signalingLayer.getPeerMediaInfo(ownerEndpointId, mediaType);
@@ -913,8 +928,9 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
     const muted = peerMediaInfo.muted;
     const videoType = peerMediaInfo.videoType; // can be undefined
 
+    // eslint-disable-next-line no-undef
     this._createRemoteTrack(
-        ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted);
+        ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted, sourceName);
 };
 
 // FIXME cleanup params
@@ -931,6 +947,7 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
  * @param {VideoType} [videoType] the track's type of the video (if applicable)
  * @param {number} ssrc the track's main SSRC number
  * @param {boolean} muted the initial muted status
+ * @param {String} sourceName the track's source name
  */
 TraceablePeerConnection.prototype._createRemoteTrack = function(
         ownerEndpointId,
@@ -939,7 +956,8 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
         mediaType,
         videoType,
         ssrc,
-        muted) {
+        muted,
+        sourceName) {
     let remoteTracksMap = this.remoteTracks.get(ownerEndpointId);
 
     if (!remoteTracksMap) {
@@ -979,7 +997,8 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
                 videoType,
                 ssrc,
                 muted,
-                this.isP2P);
+                this.isP2P,
+                sourceName);
 
     remoteTracksMap.set(mediaType, remoteTrack);
 
@@ -1704,19 +1723,21 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
     }
 
     this.localTracks.set(rtcId, track);
+    const webrtcStream = track.getOriginalStream();
 
     if (this._usesUnifiedPlan) {
-        try {
-            this.tpcUtils.addTrack(track, isInitiator);
-        } catch (error) {
-            logger.error(`${this} Adding track=${track} failed: ${error?.message}`);
+        logger.debug(`${this} TPC.addTrack using unified plan`);
+        if (webrtcStream) {
+            try {
+                this.tpcUtils.addTrack(track, isInitiator);
+            } catch (error) {
+                logger.error(`${this} Adding track=${track} failed: ${error?.message}`);
 
-            return Promise.reject(error);
+                return Promise.reject(error);
+            }
         }
     } else {
         // Use addStream API for the plan-b case.
-        const webrtcStream = track.getOriginalStream();
-
         if (webrtcStream) {
             this._addStream(webrtcStream);
 
@@ -1759,7 +1780,7 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
 
     // On Firefox, the encodings have to be configured on the sender only after the transceiver is created.
     if (browser.isFirefox()) {
-        promiseChain = promiseChain.then(() => this.tpcUtils.setEncodings(track));
+        promiseChain = promiseChain.then(() => webrtcStream && this.tpcUtils.setEncodings(track));
     }
 
     return promiseChain;
@@ -1767,19 +1788,21 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
 
 /**
  * Adds local track as part of the unmute operation.
- * @param {JitsiLocalTrack} track the track to be added as part of the unmute
- * operation
+ * @param {JitsiLocalTrack} track the track to be added as part of the unmute operation.
+ *
  * @return {Promise<boolean>} Promise that resolves to true if the underlying PeerConnection's
  * state has changed and renegotiation is required, false if no renegotiation is needed or
  * Promise is rejected when something goes wrong.
  */
 TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
+    logger.info(`${this} Adding track=${track} as unmute`);
+
     if (!this._assertTrackBelongs('addTrackUnmute', track)) {
         // Abort
+
         return Promise.reject('Track not found on the peerconnection');
     }
 
-    logger.info(`${this} Adding track=${track} as unmute`);
     const webRtcStream = track.getOriginalStream();
 
     if (!webRtcStream) {
@@ -1789,7 +1812,7 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
     }
 
     if (this._usesUnifiedPlan) {
-        return this.tpcUtils.addTrackUnmute(track);
+        return this.tpcUtils.replaceTrack(null, track).then(() => this.isP2P);
     }
 
     this._addStream(webRtcStream);
@@ -1831,7 +1854,7 @@ TraceablePeerConnection.prototype._removeStream = function(mediaStream) {
 TraceablePeerConnection.prototype._assertTrackBelongs = function(
         methodName,
         localTrack) {
-    const doesBelong = this.localTracks.has(localTrack.rtcId);
+    const doesBelong = this.localTracks.has(localTrack?.rtcId);
 
     if (!doesBelong) {
         logger.error(`${this} ${methodName}: track=${localTrack} does not belong to pc`);
@@ -1985,11 +2008,49 @@ TraceablePeerConnection.prototype.findSenderForTrack = function(track) {
  * Otherwise no renegotiation is needed.
  */
 TraceablePeerConnection.prototype.replaceTrack = function(oldTrack, newTrack) {
+    if (!(oldTrack || newTrack)) {
+        logger.info(`${this} replaceTrack called with no new track and no old track`);
+
+        return Promise.resolve();
+    }
+
+    // If a track is being added to the peerconnection for the first time, we want the source signaling to be sent to
+    // Jicofo before the mute state is sent over presence. Therefore, trigger a renegotiation in this case. If we
+    // rely on "negotiationneeded" fired by the browser to signal new ssrcs, the mute state in presence will be sent
+    // before the source signaling which is undesirable.
+    const negotiationNeeded = Boolean(!oldTrack || !this.localTracks.has(oldTrack?.rtcId));
+
     if (this._usesUnifiedPlan) {
         logger.debug(`${this} TPC.replaceTrack using unified plan`);
+        const mediaType = newTrack?.getType() ?? oldTrack?.getType();
+        const stream = newTrack?.getOriginalStream();
+        const promise = newTrack && !stream
 
-        // Renegotiate only in the case of P2P. We rely on 'negotiationeeded' to be fired for JVB.
-        return this.tpcUtils.replaceTrack(oldTrack, newTrack).then(() => this.isP2P);
+            // Ignore cases when the track is replaced while the device is in a muted state.
+            // The track will be replaced again on the peerconnection when the user unmutes.
+            ? Promise.resolve()
+            : this.tpcUtils.replaceTrack(oldTrack, newTrack);
+        const transceiver = this.tpcUtils.findTransceiver(mediaType, oldTrack);
+
+        return promise
+            .then(() => {
+                oldTrack && this.localTracks.delete(oldTrack.rtcId);
+                newTrack && this.localTracks.set(newTrack.rtcId, newTrack);
+
+                if (transceiver) {
+                    // Set the transceiver direction.
+                    transceiver.direction = newTrack ? MediaDirection.SENDRECV : MediaDirection.RECVONLY;
+                }
+
+                // Avoid configuring the encodings on Chromium/Safari until simulcast is configured
+                // for the newly added track using SDP munging which happens during the renegotiation.
+                const configureEncodingsPromise = browser.usesSdpMungingForSimulcast() || !newTrack
+                    ? Promise.resolve()
+                    : this.tpcUtils.setEncodings(newTrack);
+
+                // Renegotiate only in the case of P2P. We rely on 'negotiationeeded' to be fired for JVB.
+                return configureEncodingsPromise.then(() => this.isP2P || negotiationNeeded);
+            });
     }
 
     logger.debug(`${this} TPC.replaceTrack using plan B`);
@@ -2027,7 +2088,7 @@ TraceablePeerConnection.prototype.removeTrackMute = function(localTrack) {
     }
 
     if (this._usesUnifiedPlan) {
-        return this.tpcUtils.removeTrackMute(localTrack);
+        return this.tpcUtils.replaceTrack(localTrack, null);
     }
 
     if (webRtcStream) {
@@ -2464,10 +2525,12 @@ TraceablePeerConnection.prototype.setSenderVideoConstraints = function(frameHeig
 
     // For p2p and cases and where simulcast is explicitly disabled.
     } else if (frameHeight > 0) {
+        let scaleFactor = HD_SCALE_FACTOR;
+
         // Do not scale down encodings for desktop tracks for non-simulcast case.
-        const scaleFactor = videoType === VideoType.DESKTOP || localVideoTrack.resolution <= frameHeight
-            ? HD_SCALE_FACTOR
-            : Math.floor(localVideoTrack.resolution / frameHeight);
+        if (videoType === VideoType.CAMERA && localVideoTrack.resolution > frameHeight) {
+            scaleFactor = Math.floor(localVideoTrack.resolution / frameHeight);
+        }
 
         parameters.encodings[0].active = true;
         parameters.encodings[0].scaleResolutionDownBy = scaleFactor;
@@ -2765,6 +2828,13 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             } else if (capabilities && mimeType) {
                 capabilities = capabilities
                     .filter(caps => caps.mimeType.toLowerCase() !== `${MediaType.VIDEO}/${mimeType}`);
+            }
+
+            // Disable ulpfec on Google Chrome 96 because
+            // https://bugs.chromium.org/p/chromium/issues/detail?id=982793
+            if (browser.isChromiumBased() && browser.isVersionEqualTo('96')) {
+                capabilities = capabilities
+                    .filter(caps => caps.mimeType.toLowerCase() !== `${MediaType.VIDEO}/${CodecMimeType.ULPFEC}`);
             }
 
             try {

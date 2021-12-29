@@ -1,6 +1,6 @@
-/* global $, __filename */
+/* global $ */
 
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 import isEqual from 'lodash.isequal';
 import { $iq, $msg, $pres, Strophe } from 'strophe.js';
 
@@ -69,7 +69,7 @@ export const parser = {
  * @param pres the presence JSON
  * @param nodeName the name of the node (videomuted, audiomuted, etc)
  */
-function filterNodeFromPresenceJSON(pres, nodeName) {
+export function filterNodeFromPresenceJSON(pres, nodeName) {
     const res = [];
     for (let i = 0; i < pres.length; i++) {
         if (pres[i].tagName === nodeName) {
@@ -164,16 +164,6 @@ export default class ChatRoom extends Listenable {
             this.presMap.nodes.push({
                 'tagName': 'stats-id',
                 'value': options.statsId
-            });
-        }
-
-        if (options.deploymentInfo && options.deploymentInfo.userRegion) {
-            this.presMap.nodes.push({
-                'tagName': 'region',
-                'attributes': {
-                    id: options.deploymentInfo.userRegion,
-                    xmlns: 'http://jitsi.org/jitsi-meet'
-                }
             });
         }
 
@@ -369,15 +359,15 @@ export default class ChatRoom extends Listenable {
 
             const isBreakoutField
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_isbreakout"]>value');
-            const isBreakoutRoom = isBreakoutField?.text() || '0';
+            const isBreakoutRoom = Boolean(isBreakoutField?.text());
 
-            this.breakoutRooms._setIsBreakoutRoom(Boolean(parseInt(isBreakoutRoom)));
+            this.breakoutRooms._setIsBreakoutRoom(isBreakoutRoom);
 
             const breakoutMainRoomField
                 = $(result).find('>query>x[type="result"]>field[var="muc#roominfo_breakout_main_room"]>value');
 
             if (breakoutMainRoomField?.length) {
-                this.breakoutRooms.setMainRoomJid(breakoutMainRoomField.text());
+                this.breakoutRooms._setMainRoomJid(breakoutMainRoomField.text());
             }
 
             if (membersOnly !== this.membersOnlyEnabled) {
@@ -849,11 +839,14 @@ export default class ChatRoom extends Listenable {
                         }
                     }
 
-                    this.eventEmitter.emit(
-                        XMPPEvents.CONFERENCE_PROPERTIES_CHANGED, properties);
+                    this.eventEmitter.emit(XMPPEvents.CONFERENCE_PROPERTIES_CHANGED, properties);
 
-                    this.restartByTerminateSupported = properties['support-terminate-restart'] === 'true';
-                    logger.info(`Jicofo supports restart by terminate: ${this.supportsRestartByTerminate()}`);
+                    // Log if Jicofo supports restart by terminate only once. This conference property does not change
+                    // during the call.
+                    if (typeof this.restartByTerminateSupported === 'undefined') {
+                        this.restartByTerminateSupported = properties['support-terminate-restart'] === 'true';
+                        logger.info(`Jicofo supports restart by terminate: ${this.supportsRestartByTerminate()}`);
+                    }
                 }
                 break;
             case 'transcription-status': {
@@ -1475,11 +1468,19 @@ export default class ChatRoom extends Listenable {
                 + 'xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"]').length) {
 
             // let's extract the lobby jid from the custom field
-            const lobbyRoomNode = $(pres).find('>lobbyroom');
+            const lobbyRoomNode = $(pres).find('>error[type="auth"]>lobbyroom');
             let lobbyRoomJid;
 
             if (lobbyRoomNode.length) {
                 lobbyRoomJid = lobbyRoomNode.text();
+            } else {
+                // let's fallback to old location of lobbyroom node, TODO: to be removed in the future once
+                // everything is updated
+                const lobbyRoomOldNode = $(pres).find('>lobbyroom');
+
+                if (lobbyRoomOldNode.length) {
+                    lobbyRoomJid = lobbyRoomOldNode.text();
+                }
             }
 
             this.eventEmitter.emit(XMPPEvents.ROOM_CONNECT_MEMBERS_ONLY_ERROR, lobbyRoomJid);
@@ -1845,22 +1846,6 @@ export default class ChatRoom extends Listenable {
      *
      * @param mute
      */
-    setVideoMute(mute) {
-        this.sendVideoInfoPresence(mute);
-    }
-
-    /**
-     *
-     * @param mute
-     */
-    setAudioMute(mute) {
-        this.sendAudioInfoPresence(mute);
-    }
-
-    /**
-     *
-     * @param mute
-     */
     addAudioInfoToPresence(mute) {
         const audioMutedTagName = 'audiomuted';
 
@@ -1880,15 +1865,6 @@ export default class ChatRoom extends Listenable {
      *
      * @param mute
      */
-    sendAudioInfoPresence(mute) {
-        // FIXME resend presence on CONNECTED
-        this.addAudioInfoToPresence(mute) && this.sendPresence();
-    }
-
-    /**
-     *
-     * @param mute
-     */
     addVideoInfoToPresence(mute) {
         const videoMutedTagName = 'videomuted';
 
@@ -1902,14 +1878,6 @@ export default class ChatRoom extends Listenable {
             {
                 value: mute?.toString() || 'true'
             });
-    }
-
-    /**
-     *
-     * @param mute
-     */
-    sendVideoInfoPresence(mute) {
-        this.addVideoInfoToPresence(mute) && this.sendPresence();
     }
 
     /**
@@ -1964,6 +1932,15 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
+     * Returns the last presence advertised by a MUC member.
+     * @param {string} mucNick
+     * @returns {*}
+     */
+    getLastPresence(mucNick) {
+        return this.lastPresences[`${this.roomjid}/${mucNick}`];
+    }
+
+    /**
      * Returns true if the SIP calls are supported and false otherwise
      */
     isSIPCallingSupported() {
@@ -2007,7 +1984,7 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
-     * @returns {BreakoutRoomsHelper}
+     * @returns {BreakoutRooms}
      */
     getBreakoutRooms() {
         return this.breakoutRooms;
@@ -2207,37 +2184,35 @@ export default class ChatRoom extends Listenable {
      */
     leave() {
         this.avModeration.dispose();
-        
+        this.breakoutRooms.dispose();
+
         const promises = [];
 
         this.lobby?.lobbyRoom && promises.push(this.lobby.leave());
 
         promises.push(new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => onMucLeft(true), 5000);
-            const eventEmitter = this.eventEmitter;
+            let timeout = -1;
 
-            this.clean();
-
-            /**
-             *
-             * @param doReject
-             */
-            function onMucLeft(doReject = false) {
-                eventEmitter.removeListener(XMPPEvents.MUC_LEFT, onMucLeft);
+            const onMucLeft = (doReject = false) => {
+                this.eventEmitter.removeListener(XMPPEvents.MUC_LEFT, onMucLeft);
                 clearTimeout(timeout);
                 if (doReject) {
-                    // the timeout expired
-                    reject(new Error('The timeout for the confirmation about '
-                        + 'leaving the room expired.'));
+                    // The timeout expired. Make sure we clean the EMUC state.
+                    this.connection.emuc.doLeave(this.roomjid);
+                    reject(new Error('The timeout for the confirmation about leaving the room expired.'));
                 } else {
                     resolve();
                 }
-            }
-            eventEmitter.on(XMPPEvents.MUC_LEFT, onMucLeft);
+            };
+
+            timeout = setTimeout(() => onMucLeft(true), 5000);
+
+            this.clean();
+            this.eventEmitter.on(XMPPEvents.MUC_LEFT, onMucLeft);
             this.doLeave();
         }));
 
-        return Promise.all(promises);
+        return Promise.allSettled(promises);
     }
 }
 

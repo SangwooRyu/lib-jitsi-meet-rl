@@ -230,6 +230,16 @@ const XMPPEvents = {
     SENDING_PRIVATE_CHAT_MESSAGE: 'xmpp.sending_private_chat_message',
 
     /**
+     * Event fired after receiving the confirmation about session accept.
+     */
+    SESSION_ACCEPT: 'xmpp.session_accept',
+
+    /**
+     * Event fired if we receive an error after sending the session accept.
+     */
+    SESSION_ACCEPT_ERROR: 'xmpp.session_accept_error',
+
+    /**
      * Event fired when we do not get our 'session-accept' acknowledged by
      * Jicofo. It most likely means that there is serious problem with our
      * connection or XMPP server and we should reload the conference.
@@ -240,6 +250,26 @@ const XMPPEvents = {
      * packets means that most likely it has never seen our IQ.
      */
     SESSION_ACCEPT_TIMEOUT: 'xmpp.session_accept_timeout',
+
+    /**
+     * Event fired after successful sending of jingle source-add.
+     */
+    SOURCE_ADD: 'xmpp.source_add',
+
+    /**
+     * Event fired after receiving an error sending of jingle source-add.
+     */
+    SOURCE_ADD_ERROR: 'xmpp.source_add_error',
+
+    /**
+     * Event fired after successful sending of jingle source-remove.
+     */
+    SOURCE_REMOVE: 'xmpp.source_remove',
+
+    /**
+     * Event fired after receiving an error sending of jingle source-remove.
+     */
+    SOURCE_REMOVE_ERROR: 'xmpp.source_remove_error',
 
     /**
      * Event fired when speaker stats update message is received.
@@ -285,6 +315,21 @@ const XMPPEvents = {
      * Event fired when we receive message that a new jid was approved.
      */
     AV_MODERATION_PARTICIPANT_REJECTED: 'xmpp.av_moderation.participant.rejected',
+
+    /**
+     * Event fired when a participant is requested to join a given (breakout) room.
+     */
+    BREAKOUT_ROOMS_MOVE_TO_ROOM: 'xmpp.breakout-rooms.move-to-room',
+
+    /**
+     * Event fired when we receive a message for breakout rooms.
+     */
+    BREAKOUT_ROOMS_EVENT: 'xmpp.breakout-rooms.event',
+
+    /**
+     * Event fired when the breakout rooms data was updated.
+     */
+    BREAKOUT_ROOMS_UPDATED: 'xmpp.breakout-rooms.updated',
 
     // Designates an event indicating that we should join the conference with
     // audio and/or video muted.

@@ -9,6 +9,12 @@
 export const AUDIO_INPUT_STATE_CHANGE = 'conference.audio_input_state_changed';
 
 /**
+ * Event indicates that the permission for unmuting audio has changed based on the number of audio senders in the call
+ * and the audio sender limit configured in Jicofo.
+ */
+export const AUDIO_UNMUTE_PERMISSIONS_CHANGED = 'conference.audio_unmute_permissions_changed';
+
+/**
  * Indicates that authentication status changed.
  */
 export const AUTH_STATUS_CHANGED = 'conference.auth_status_changed';
@@ -333,6 +339,12 @@ export const TRACK_MUTE_CHANGED = 'conference.trackMuteChanged';
 export const TRACK_REMOVED = 'conference.trackRemoved';
 
 /**
+ * The source-add for unmuting of a media track was rejected by Jicofo.
+ *
+ */
+export const TRACK_UNMUTE_REJECTED = 'conference.trackUnmuteRejected';
+
+/**
  * Notifies for transcription status changes. The event provides the
  * following parameters to its listeners:
  *
@@ -361,6 +373,12 @@ export const USER_ROLE_CHANGED = 'conference.roleChanged';
  * User status changed.
  */
 export const USER_STATUS_CHANGED = 'conference.statusChanged';
+
+/**
+ * Event indicates that the permission for unmuting video has changed based on the number of video senders in the call
+ * and the video sender limit configured in Jicofo.
+ */
+export const VIDEO_UNMUTE_PERMISSIONS_CHANGED = 'conference.video_unmute_permissions_changed';
 
 /**
  * Event indicates that the bot participant type changed.
@@ -470,5 +488,20 @@ export const AV_MODERATION_PARTICIPANT_APPROVED = 'conference.av_moderation.part
  * }.
  */
 export const AV_MODERATION_PARTICIPANT_REJECTED = 'conference.av_moderation.participant.rejected';
+
+/**
+ * A new facial expression is added with its duration for a participant
+ */
+export const FACIAL_EXPRESSION_ADDED = 'conference.facial_expression.added';
+
+/**
+ * Event fired when a participant is requested to join a given (breakout) room.
+ */
+export const BREAKOUT_ROOMS_MOVE_TO_ROOM = 'conference.breakout-rooms.move-to-room';
+
+/**
+ * Event fired when the breakout rooms data was updated.
+ */
+export const BREAKOUT_ROOMS_UPDATED = 'conference.breakout-rooms.updated';
 
 export const FACE_DETECT_ENABLED = 'conference.face_detect.enabled';

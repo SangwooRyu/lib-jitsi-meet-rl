@@ -1,4 +1,4 @@
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 import { $msg, Strophe } from 'strophe.js';
 
 import XMPPEvents from '../../service/xmpp/XMPPEvents';
@@ -84,7 +84,8 @@ export default class Lobby {
 
     /**
      * Leaves the lobby room.
-     * @private
+     *
+     * @returns {Promise}
      */
     leave() {
         if (this.lobbyRoom) {
@@ -97,7 +98,7 @@ export default class Lobby {
         }
 
         return Promise.reject(
-            new Error('The lobby has already been left'));
+                new Error('The lobby has already been left'));
     }
 
     /**
@@ -173,6 +174,13 @@ export default class Lobby {
                     // we need to ignore joins on lobby for participants that are already in the main room
                     if (Object.values(this.mainRoom.members).find(m => m.jid === jid)) {
                         return;
+                    }
+
+                    // Check if the user is a member if any breakout room.
+                    for (const room of Object.values(this.mainRoom.getBreakoutRooms()._rooms)) {
+                        if (Object.values(room.participants).find(p => p.jid === jid)) {
+                            return;
+                        }
                     }
 
                     // we emit the new event on the main room so we can propagate
