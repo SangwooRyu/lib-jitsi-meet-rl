@@ -622,33 +622,6 @@ export default class ChatRoom extends Listenable {
             if (this.role !== newRole) {
                 this.role = newRole;
                 this.eventEmitter.emit(XMPPEvents.LOCAL_ROLE_CHANGED, this.role);
-
-                // emit an event to notify that the local participant has been 
-                // disabled for chat i.e. role changed to "visitor"
-                if(newRole === "visitor") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
-                    );
-                }
-
-                // emit an event to notify that the local participant has been
-                // allowed to chat i.e. role changed to "participant"
-                if(newRole === "participant") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
-                    );
-                }
-
-                // emit an event to notify that the local participant has been
-                // granted moderator right i.e. role changed to "moderator"
-                if(newRole === "moderator") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
-                    );
-                }
             }
             if (!this.joined) {
                 this.joined = true;
@@ -718,34 +691,6 @@ export default class ChatRoom extends Listenable {
                 memberOfThis.role = member.role;
                 this.eventEmitter.emit(
                     XMPPEvents.MUC_ROLE_CHANGED, from, member.role);
-
-                // emit an event to notify that this remote participant has been 
-                // disabled for chat i.e. role changed to "visitor"
-                if(memberOfThis.role === "visitor") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.PARTICIPANT_CHAT_DISABLED, participantId
-                    );
-                }
-
-                // emit an event to notify that this remote participant has been 
-                // allowed for chat i.e. role changed to "participant"
-                if(memberOfThis.role === "participant") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.PARTICIPANT_CHAT_ENABLED, participantId
-                    );
-                }
-
-                // emit an event to notify that this remote participant has been 
-                // granted moderator rights i.e. role changed to "moderator"
-                if(memberOfThis.role === "moderator") {
-                    let participantId = Strophe.getResourceFromJid(from);
-                    this.eventEmitter.emit(
-                        XMPPEvents.MODERATOR_ROLE_GRANTED, participantId
-                    );
-                }
-                // end of added portion
             }
 
             // affiliation changed

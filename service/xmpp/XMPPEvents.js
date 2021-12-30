@@ -385,12 +385,6 @@ const XMPPEvents = {
      */
     JSON_MESSAGE_RECEIVED: 'xmmp.json_message_received',
 
-    PARTICIPANT_CHAT_DISABLED: 'xmpp.participant_chat_disabled',
-
-    PARTICIPANT_CHAT_ENABLED: 'xmpp.participant_chat_enabled',
-
-    MODERATOR_ROLE_GRANTED: 'xmpp.moderator_role_granted',
-
     TIME_REMAINED: 'xmpp.time_remained',
 
     VIDEO_MUTED_BY_FOCUS: 'xmpp.video_muted_by_focus',

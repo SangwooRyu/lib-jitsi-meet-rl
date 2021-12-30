@@ -2094,20 +2094,6 @@ JitsiConference.prototype.onMemberKicked = function(
         JitsiConferenceEvents.PARTICIPANT_KICKED, actorParticipant, kickedParticipant, reason);
 };
 
-// this function is for notifying the affected user that they were disabled for chat by broadcasting an event
-JitsiConference.prototype.onParticipantChatDisabled = function(disabledParticipantID) {
-    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_DISABLED, disabledParticipantID);
-}
-
-JitsiConference.prototype.onParticipantChatEnabled = function(enabledParticipantID) {
-    this.eventEmitter.emit(JitsiConferenceEvents.PARTICIPANT_CHAT_ENABLED, enabledParticipantID);
-}
-
-JitsiConference.prototype.onModeratorRoleGranted = function(participantId) {
-    this.eventEmitter.emit(JitsiConferenceEvents.MODERATOR_ROLE_GRANTED, participantId);
-}
-// end of added portion
-
 /**
  * Method called on local MUC role change.
  * @param {string} role the name of new user's role as defined by XMPP MUC.

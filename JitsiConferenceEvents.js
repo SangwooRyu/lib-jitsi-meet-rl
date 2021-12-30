@@ -400,18 +400,6 @@ export const LOBBY_USER_UPDATED = 'conference.lobby.userUpdated';
  */
 export const LOBBY_USER_LEFT = 'conference.lobby.userLeft';
 
-/**
- * A participant is disabled for chat by moderator.
- */
-export const PARTICIPANT_CHAT_DISABLED = 'conference.participant_chatDisabled';
-
-/**
- * A participant is enabled for chat by moderator.
- */
-export const PARTICIPANT_CHAT_ENABLED = 'conference.participant_chatEnabled';
-
-export const MODERATOR_ROLE_GRANTED = 'conference.moderator_role_granted';
-
 export const TIME_REMAINED = 'conference.time_remained';
 
 export const NOTIFY_RANDOM_SELECTION_STARTED = 'conference.notify_random_selection_started';
