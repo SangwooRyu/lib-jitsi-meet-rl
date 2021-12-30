@@ -54,7 +54,16 @@ export default class AVModeration {
      * @returns {boolean} whether AV moderation is supported on backend.
      */
     isSupported() {
-        return Boolean(this._xmpp.avModerationComponentAddress);
+        return Boolean(this.getComponentAddress());
+    }
+
+    /**
+     * Gets the address of the Breakout Rooms XMPP component.
+     *
+     * @returns The address of the component.
+     */
+    getComponentAddress() {
+        return this._xmpp.avModerationComponentAddress;
     }
 
     /**
@@ -74,7 +83,12 @@ export default class AVModeration {
             return;
         }
 
-        this.send({ enable: state, kind });
+        const message = {
+            enable: state,
+            kind
+        };
+
+        this._sendMessage(message);
     }
 
     /**
@@ -88,7 +102,12 @@ export default class AVModeration {
             return;
         }
 
-        this.send({ kind, jidToWhitelist: jid });
+        const message = {
+            kind,
+            jidToWhitelist: jid
+        };
+
+        this._sendMessage(message);
     }
 
     /**
@@ -103,11 +122,16 @@ export default class AVModeration {
         }
 
         // send a message to remove from whitelist the jid and reject it to unmute
-        this.send({ kind, jidToBlacklist: jid });
+        const message = {
+            kind,
+            jidToBlacklist: jid
+        };
+
+        this._sendMessage(message);
     }
 
-    send(message) {
-        const msg = $msg({ to: this._xmpp.avModerationComponentAddress });
+    _sendMessage(message) {
+        const msg = $msg({ to: this.getComponentAddress() });
         const jsonMsg = JSON.stringify({
             ...message,
             type: 'av_moderation',

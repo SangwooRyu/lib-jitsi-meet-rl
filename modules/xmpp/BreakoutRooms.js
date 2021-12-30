@@ -186,8 +186,11 @@ export default class BreakoutRooms {
     _sendMessage(message) {
         const msg = $msg({ to: this.getComponentAddress() });
 
-        msg.c('breakout_rooms', message).up();
-
+        const jsonMsg = JSON.stringify({
+            ...message,
+            mainRoomJid: this._mainRoom.roomjid
+        });
+        msg.c('json-message', { xmlns: 'http://jitsi.org/jitmeet' }, jsonMsg);
         this.room.xmpp.connection.send(msg);
     }
 }
