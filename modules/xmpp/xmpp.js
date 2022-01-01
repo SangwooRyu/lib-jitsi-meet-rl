@@ -446,10 +446,6 @@ export default class XMPP extends Listenable {
                 }
             }
 
-            if (identity.type === 'breakout_rooms') {
-                this.breakoutRoomsComponentAddress = identity.name;
-            }
-
             if (identity.type === 'shard') {
                 this.options.deploymentInfo.shard = this.connection.shard = identity.name;
             }

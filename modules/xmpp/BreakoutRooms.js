@@ -188,7 +188,7 @@ export default class BreakoutRooms {
 
         const jsonMsg = JSON.stringify({
             ...message,
-            mainRoomJid: this._mainRoom.roomjid
+            mainRoomJid: this._mainRoomJid || this.room.roomjid
         });
         msg.c('json-message', { xmlns: 'http://jitsi.org/jitmeet' }, jsonMsg);
         this.room.xmpp.connection.send(msg);
