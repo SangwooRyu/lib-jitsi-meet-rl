@@ -26,7 +26,8 @@ export default class AVModeration {
             video: false,
             chat: false,
             poll: false,
-            name: false
+            name: false,
+            presenter: false,
         };
 
         this._whitelist = {
@@ -34,7 +35,8 @@ export default class AVModeration {
             video: [],
             chat: [],
             poll: [],
-            name: []
+            name: [],
+            presenter: [],
         };
 
         this._onMessage = this._onMessage.bind(this);
