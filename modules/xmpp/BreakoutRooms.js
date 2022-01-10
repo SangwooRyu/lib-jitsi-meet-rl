@@ -7,7 +7,8 @@ const FEATURE_KEY = 'features/breakout-rooms';
 const BREAKOUT_ROOM_ACTIONS = {
     ADD: `${FEATURE_KEY}/add`,
     REMOVE: `${FEATURE_KEY}/remove`,
-    MOVE_TO_ROOM: `${FEATURE_KEY}/move-to-room`
+    MOVE_TO_ROOM: `${FEATURE_KEY}/move-to-room`,
+    UPDATE: `${FEATURE_KEY}/update`
 };
 const BREAKOUT_ROOM_EVENTS = {
     MOVE_TO_ROOM: `${FEATURE_KEY}/move-to-room`,
@@ -79,6 +80,29 @@ export default class BreakoutRooms {
         const message = {
             type: BREAKOUT_ROOM_ACTIONS.REMOVE,
             breakoutRoomJid
+        };
+
+        this._sendMessage(message);
+    }
+
+    /** 
+     * Update subject of a breakout room
+     * 
+     * @param {string} breakoutRoomJid - JID of the room to be updated.
+     * @param {string} subject - Subject of the room.
+     */
+    updateBreakoutRoom(breakoutRoomJid, subject) {
+        if (!this.isSupported() || !this.room.isModerator()) {
+            logger.error(`Cannot update breakout room - supported:${this.isSupported()}, 
+                moderator:${this.room.isModerator()}`);
+
+            return;
+        }
+
+        const message = {
+            type: BREAKOUT_ROOM_ACTIONS.UPDATE,
+            breakoutRoomJid,
+            subject
         };
 
         this._sendMessage(message);

@@ -152,8 +152,8 @@ export default class AVModeration {
         const { removed, kind, enabled, approved, actor, whitelists: newWhitelists } = obj;
 
         if (newWhitelists) {
-            const oldList = this._whitelist[kind];
-            const newList = newWhitelists[kind];
+            const oldList = this._whitelist[kind] || [];
+            const newList = newWhitelists[kind] || [];
 
             if (removed) {
                 oldList.filter(x => !newList.includes(x))

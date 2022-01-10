@@ -1011,6 +1011,10 @@ export default class ChatRoom extends Listenable {
 
         msg.c('subject', subject);
         this.connection.send(msg);
+
+        if (this.breakoutRooms?.isBreakoutRoom()) {
+            this.breakoutRooms.updateBreakoutRoom(this.roomjid, subject);
+        }
     }
 
     /**
