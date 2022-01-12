@@ -166,6 +166,12 @@ export default class ChatRoom extends Listenable {
                 'value': options.statsId
             });
         }
+        if (options.presenceStatus) {
+            this.presMap.nodes.push({
+                'tagName': 'status',
+                'value': options.presenceStatus
+            });
+        }
 
         this.presenceUpdateTime = Date.now();
     }

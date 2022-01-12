@@ -162,7 +162,8 @@ export default class BreakoutRooms {
      * @returns True if the room is a breakout room, false otherwise.
      */
     isBreakoutRoom() {
-        return this._isBreakoutRoom;
+        const domain = this.room?.roomjid?.split('@')[1];
+        return this._isBreakoutRoom || domain === this.getComponentAddress();
     }
 
     /**
