@@ -331,6 +331,11 @@ const XMPPEvents = {
      */
     BREAKOUT_ROOMS_UPDATED: 'xmpp.breakout-rooms.updated',
 
+    /**
+     * Event fired when the attention status was updated.
+     */
+    BREAKOUT_ROOMS_ATTENTION_UPDATED: 'xmpp.breakout-rooms.attention_updated',
+
     // Designates an event indicating that we should join the conference with
     // audio and/or video muted.
     START_MUTED_FROM_FOCUS: 'xmpp.start_muted_from_focus',
@@ -410,14 +415,19 @@ const XMPPEvents = {
     // Designates an event indicating that timer has finished.
     NOTIFY_TIMER_FINISHED: 'xmpp.notify_timer_finished',
 
+    // Designates an event indicating that random selection has finished.
     NOTIFY_RANDOM_SELECTION_FINISHED: 'xmpp.notify_random_selection_finished',
 
+    // Designates an event indicating that random participant has selected.
     PIN_RANDOM_PARTICIPANT: 'xmpp.pin_random_participant',
 
+    // Designates an event indicating that random selection countdown has started.
     RANDOM_SELECTION_COUNTDOWN: 'xmpp.random_selection_countdown',
 
+    // Designates an event indicating that birthday flag has updated.
     PARTICIPANT_BIRTHDAY_FLAG_UPDATED: 'xmpp.birthday_flag_updated',
 
+    // Designates an event indicating that face detect has enabled.
     FACE_DETECT_ENABLED: 'xmpp.face_detect_enabled',
 };
 

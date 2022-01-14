@@ -12,7 +12,8 @@ const BREAKOUT_ROOM_ACTIONS = {
 };
 const BREAKOUT_ROOM_EVENTS = {
     MOVE_TO_ROOM: `${FEATURE_KEY}/move-to-room`,
-    UPDATE: `${FEATURE_KEY}/update`
+    UPDATE: `${FEATURE_KEY}/update`,
+    ATTENTION_UPDATE: `${FEATURE_KEY}/attention-update`
 };
 
 const logger = getLogger(__filename);
@@ -195,11 +196,13 @@ export default class BreakoutRooms {
         case BREAKOUT_ROOM_EVENTS.MOVE_TO_ROOM:
             this.room.eventEmitter.emit(XMPPEvents.BREAKOUT_ROOMS_MOVE_TO_ROOM, payload.roomJid);
             break;
-        case BREAKOUT_ROOM_EVENTS.UPDATE: {
+        case BREAKOUT_ROOM_EVENTS.UPDATE:
             this._rooms = payload.rooms;
             this.room.eventEmitter.emit(XMPPEvents.BREAKOUT_ROOMS_UPDATED, payload);
             break;
-        }
+        case BREAKOUT_ROOM_EVENTS.ATTENTION_UPDATE:
+            this.room.eventEmitter.emit(XMPPEvents.BREAKOUT_ROOMS_ATTENTION_UPDATED, payload);
+            break;
         }
     }
 

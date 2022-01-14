@@ -485,6 +485,8 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
         JitsiConferenceEvents.BREAKOUT_ROOMS_MOVE_TO_ROOM);
     this.chatRoomForwarder.forward(XMPPEvents.BREAKOUT_ROOMS_UPDATED,
         JitsiConferenceEvents.BREAKOUT_ROOMS_UPDATED);
+    this.chatRoomForwarder.forward(XMPPEvents.BREAKOUT_ROOMS_ATTENTION_UPDATED,
+        JitsiConferenceEvents.BREAKOUT_ROOMS_ATTENTION_UPDATED);
 };
 
 /**

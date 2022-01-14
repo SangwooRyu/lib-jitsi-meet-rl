@@ -492,4 +492,12 @@ export const BREAKOUT_ROOMS_MOVE_TO_ROOM = 'conference.breakout-rooms.move-to-ro
  */
 export const BREAKOUT_ROOMS_UPDATED = 'conference.breakout-rooms.updated';
 
+/**
+ * Event fired when the attention status was updated.
+ */
+export const BREAKOUT_ROOMS_ATTENTION_UPDATED = 'conference.breakout-rooms.attention-updated';
+
+/**
+ * Event fired when face detect was enabled.
+ */
 export const FACE_DETECT_ENABLED = 'conference.face_detect.enabled';
