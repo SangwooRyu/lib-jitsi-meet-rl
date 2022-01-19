@@ -1311,7 +1311,7 @@ export default class ChatRoom extends Listenable {
 
             let initiator = $(msg).find('>nick').text(); //Payload is being passed as JSON object.
             try {
-                this.eventEmitter.emit(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON, initiator);
+                this.eventEmitter.emit(XMPPEvents.NOTIFY_BIRTHDAY_HAT_ON, initiator, from);
             } catch(err) {
                 console.error(err);
             }
