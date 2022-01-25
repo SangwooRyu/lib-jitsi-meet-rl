@@ -1,4 +1,7 @@
+import { getLogger } from '@jitsi/logger';
 import async from 'async';
+
+const logger = getLogger(__filename);
 
 /**
  * A queue for async task execution.
@@ -23,7 +26,12 @@ export default class AsyncQueue {
      * Internal task processing implementation which makes things work.
      */
     _processQueueTasks(task, finishedCallback) {
-        task(finishedCallback);
+        try {
+            task(finishedCallback);
+        } catch (error) {
+            logger.error(`Task failed: ${error?.stack}`);
+            finishedCallback(error);
+        }
     }
 
     /**

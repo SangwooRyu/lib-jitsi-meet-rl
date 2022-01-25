@@ -14,7 +14,7 @@ import { PerformanceObserverStats } from './PerformanceObserverStats';
 import RTPStats from './RTPStatsCollector';
 import { CALLSTATS_SCRIPT_URL } from './constants';
 
-const logger = require('jitsi-meet-logger').getLogger(__filename);
+const logger = require('@jitsi/logger').getLogger(__filename);
 
 /**
  * Stores all active {@link Statistics} instances.
@@ -72,7 +72,8 @@ function _initCallStatsBackend(options) {
         applicationName: options.applicationName,
         getWiFiStatsMethod: options.getWiFiStatsMethod,
         confID: options.confID,
-        siteID: options.siteID
+        siteID: options.siteID,
+        configParams: options.configParams
     })) {
         logger.error('CallStats Backend initialization failed bad');
     }
@@ -141,6 +142,8 @@ Statistics.init = function(options) {
  * @property {string} customScriptUrl - A custom lib url to use when downloading
  * callstats library.
  * @property {string} roomName - The room name we are currently in.
+ * @property {string} configParams - The set of parameters
+ * to enable/disable certain features in the library. See CallStats docs for more info.
  */
 /**
  *
@@ -343,6 +346,20 @@ Statistics.prototype.getLongTasksStats = function() {
  */
 Statistics.prototype.removeLongTasksStatsListener = function(listener) {
     this.eventEmitter.removeListener(StatisticsEvents.LONG_TASKS_STATS, listener);
+};
+
+/**
+ * Updates the list of speakers for which the audio levels are to be calculated. This is needed for the jvb pc only.
+ *
+ * @param {Array<string>} speakerList The list of remote endpoint ids.
+ * @returns {void}
+ */
+Statistics.prototype.setSpeakerList = function(speakerList) {
+    for (const rtpStats of Array.from(this.rtpStatsMap.values())) {
+        if (!rtpStats.peerconnection.isP2P) {
+            rtpStats.setSpeakerList(speakerList);
+        }
+    }
 };
 
 Statistics.prototype.dispose = function() {

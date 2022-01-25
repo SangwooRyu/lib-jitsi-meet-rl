@@ -18,15 +18,8 @@ export default class SpeakerStatsCollector {
     constructor(conference) {
         this.stats = {
             users: {
+
                 // userId: SpeakerStats
-                // index by jid
-            },
-            usersIdentity:{
-                // user Identity: SpeakerStats
-                // index by account's own id
-            },
-            userIdMatching: {
-                //matching jid -> account's own id
             },
             dominantSpeakerId: null
         };
@@ -34,7 +27,6 @@ export default class SpeakerStatsCollector {
         const userId = conference.myUserId();
 
         this.stats.users[userId] = new SpeakerStats(userId, null, true);
-
         this.conference = conference;
 
         conference.addEventListener(
@@ -49,13 +41,13 @@ export default class SpeakerStatsCollector {
         conference.addEventListener(
             JitsiConferenceEvents.DISPLAY_NAME_CHANGED,
             this._onDisplayNameChange.bind(this));
+        conference.addEventListener(
+            JitsiConferenceEvents.FACIAL_EXPRESSION_ADDED,
+            this._onFacialExpressionAdd.bind(this));
         if (conference.xmpp) {
             conference.xmpp.addListener(
                 XMPPEvents.SPEAKER_STATS_RECEIVED,
                 this._updateStats.bind(this));
-            conference.xmpp.addListener(
-                XMPPEvents.PARTICIPANT_LOG_RECEIVED,
-                this._updateIdMatching.bind(this));
         }
     }
 
@@ -75,35 +67,6 @@ export default class SpeakerStatsCollector {
 
         oldDominantSpeaker && oldDominantSpeaker.setDominantSpeaker(false);
         newDominantSpeaker && newDominantSpeaker.setDominantSpeaker(true);
-
-        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
-        const userIdentityOld = this.stats.userIdMatching[this.stats.dominantSpeakerId];
-        const userIdentityNew = this.stats.userIdMatching[dominantSpeakerId];
-        
-        let oldDominantSpeakerIdentity;
-        let newDominantSpeakerIdentity;
-
-        if (!userIdentityOld){
-            oldDominantSpeakerIdentity
-            = this.stats.usersIdentity[this.stats.dominantSpeakerId];
-        }
-        else {
-            oldDominantSpeakerIdentity
-            = this.stats.usersIdentity[userIdentityOld];
-        }
-
-        if (!userIdentityNew){
-            newDominantSpeakerIdentity
-            = this.stats.usersIdentity[dominantSpeakerId];
-        }
-        else {
-            newDominantSpeakerIdentity
-            = this.stats.usersIdentity[userIdentityNew];
-        }
-        
-        oldDominantSpeakerIdentity && oldDominantSpeakerIdentity.setDominantSpeaker(false);
-        newDominantSpeakerIdentity && newDominantSpeakerIdentity.setDominantSpeaker(true);
-    
         this.stats.dominantSpeakerId = dominantSpeakerId;
     }
 
@@ -123,24 +86,6 @@ export default class SpeakerStatsCollector {
         if (!this.stats.users[userId]) {
             this.stats.users[userId] = new SpeakerStats(userId, participant.getDisplayName());
         }
-
-        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
-        const userIdentity = this.conference.getParticipantIdentityById(userId);
-
-        if (!userIdentity){
-            this.stats.usersIdentity[userId] = new SpeakerStats(userId, participant.getDisplayName());
-            this.stats.userIdMatching[userId] = userId;
-        }
-        else {
-            if (!this.stats.usersIdentity[userIdentity]){
-                this.stats.userIdMatching[userId] = userIdentity;
-                this.stats.usersIdentity[userIdentity] = new SpeakerStats(userId, participant.getDisplayName());
-            }
-            else {
-                this.stats.userIdMatching[userId] = userIdentity;
-                this.stats.usersIdentity[userIdentity].markAsHasJoined();
-            }
-        }
     }
 
     /**
@@ -153,27 +98,10 @@ export default class SpeakerStatsCollector {
      */
     _onUserLeave(userId) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = this.stats.userIdMatching[userId];
 
         if (savedUser) {
             savedUser.markAsHasLeft();
         }
-
-        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
-        if (!userIdentity){
-            const savedUserIdentity = this.stats.usersIdentity[userId];
-
-            if (savedUserIdentity){
-                savedUserIdentity.markAsHasLeft();
-            }
-        }
-        else {
-            const savedUserIdentity = this.stats.usersIdentity[userIdentity];
-
-            if (savedUserIdentity){
-                savedUserIdentity.markAsHasLeft();
-            }
-        }   
     }
 
     /**
@@ -186,26 +114,25 @@ export default class SpeakerStatsCollector {
      */
     _onDisplayNameChange(userId, newName) {
         const savedUser = this.stats.users[userId];
-        const userIdentity = this.stats.userIdMatching[userId];
 
         if (savedUser) {
             savedUser.setDisplayName(newName);
         }
+    }
 
-        //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
-        if (!userIdentity){
-            const savedUserIdentity = this.stats.usersIdentity[userId];
+    /**
+     * Adds a new facial expression with its duration of a remote user.
+     *
+     * @param {string} userId - The user id of the user that left.
+     * @param {Object} data - The facial expression with its duration.
+     * @returns {void}
+     * @private
+     */
+    _onFacialExpressionAdd(userId, data) {
+        const savedUser = this.stats.users[userId];
 
-            if (savedUserIdentity){
-                savedUserIdentity.setDisplayName(newName);
-            }
-        }
-        else {
-            const savedUserIdentity = this.stats.usersIdentity[userIdentity];
-
-            if (savedUserIdentity){
-                savedUserIdentity.setDisplayName(newName);
-            }
+        if (savedUser) {
+            savedUser.addFacialExpression(data.facialExpression, data.duration);
         }
     }
 
@@ -218,17 +145,6 @@ export default class SpeakerStatsCollector {
      */
     getStats() {
         return this.stats.users;
-    }
-
-    /**
-     * Return a copy of the tracked SpeakerStats models that is indexed by account's own id.
-     *
-     * @returns {Object} The keys are the user identitys and the values are the
-     * associated user's SpeakerStats model.
-     * @private
-     */
-    getStatsIdentity(){
-        return this.stats.usersIdentity;
     }
 
     /**
@@ -257,104 +173,12 @@ export default class SpeakerStatsCollector {
                     this.stats.users[userId] = speakerStatsToUpdate;
                     speakerStatsToUpdate.markAsHasLeft();
                 }
-
-                speakerStatsToUpdate.totalDominantSpeakerTime
-                    = newStats[userId].totalDominantSpeakerTime;
             }
 
-            //Below lines are for update this.stats.usersIdentity (similar logic as updating this.stats.users)
-            if(!this.stats.userIdMatching[userId]){
-                this.stats.userIdMatching[userId] = this.conference.getParticipantIdentityById(userId);
-            }
-            
-            let speakerStatsToUpdateIdentity;
+            speakerStatsToUpdate.totalDominantSpeakerTime
+                = newStats[userId].totalDominantSpeakerTime;
 
-            if (!newParticipant || !newParticipant.isHidden()) {
-                const userIdentity = this.stats.userIdMatching[userId];
-
-                if (!userIdentity) {
-                    if (this.stats.usersIdentity[userId]) {
-                        speakerStatsToUpdateIdentity = this.stats.usersIdentity[userId];
-    
-                        if (!speakerStatsToUpdateIdentity.getDisplayName()) {
-                            speakerStatsToUpdateIdentity
-                                .setDisplayName(newStats[userId].displayName);
-                        }
-                    } else {
-                        speakerStatsToUpdateIdentity = new SpeakerStats(
-                            userId, newStats[userId].displayName);
-                        this.stats.usersIdentity[userId] = speakerStatsToUpdateIdentity;
-                        speakerStatsToUpdateIdentity.markAsHasLeft();
-                    }
-                }
-                else {
-                    if (this.stats.usersIdentity[userIdentity]) {
-                        speakerStatsToUpdateIdentity = this.stats.usersIdentity[userIdentity];
-    
-                        if (!speakerStatsToUpdateIdentity.getDisplayName()) {
-                            speakerStatsToUpdateIdentity
-                                .setDisplayName(newStats[userId].displayName);
-                        }
-                    } else {
-                        speakerStatsToUpdateIdentity = new SpeakerStats(
-                            userId, newStats[userId].displayName);
-                        this.stats.usersIdentity[userIdentity] = speakerStatsToUpdateIdentity;
-                        speakerStatsToUpdateIdentity.markAsHasLeft();
-                    }
-                }
-
-                speakerStatsToUpdateIdentity.totalDominantSpeakerTime
-                    = newStats[userId].totalDominantSpeakerTime;
-            }
-        }
-    }
-
-    //Update Id Matching by parsing message from participant_log prosody module.
-    //This function is for getting identity of myself. 
-    _updateIdMatching(message) {
-        for (const userId in message){
-            if(userId != this.conference.myUserId()){
-                continue;
-            }
-
-            var xmlPacket = message[userId]["sessions"];
-
-            let idFromPacket = null;
-            if(xmlPacket){
-                let find = false;
-                for(var i = 0; i < xmlPacket.tags.length; i++){
-                    if(xmlPacket.tags[i].name == "identity"){
-                        for(var j = 0; j < xmlPacket.tags[i].tags.length; j++){
-                            if(xmlPacket.tags[i].tags[j].name == "user"){
-                                for(var k = 0; k < xmlPacket.tags[i].tags[j].tags.length; k++){
-                                    if(xmlPacket.tags[i].tags[j].tags[k].name == "id"){
-                                        idFromPacket = xmlPacket.tags[i].tags[j].tags[k].__array[0];
-                                        find = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if(find){
-                                break;
-                            }
-                        }
-                    }
-                    if(find){
-                        break;
-                    }
-                }
-            }
-
-            if(!idFromPacket){
-                this.stats.usersIdentity[userId] = new SpeakerStats(userId, null, true);
-                this.stats.userIdMatching[userId] = userId;
-            }
-            else{
-                if (!this.stats.usersIdentity[idFromPacket]){
-                    this.stats.userIdMatching[userId] = idFromPacket;
-                    this.stats.usersIdentity[idFromPacket] = new SpeakerStats(userId, null, true);
-                }
-            }
+            speakerStatsToUpdate.setFacialExpressions(newStats[userId].facialExpressions);
         }
     }
 }

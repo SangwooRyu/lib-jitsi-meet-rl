@@ -1,6 +1,8 @@
 /* global $ */
 
+import MediaDirection from '../../service/RTC/MediaDirection';
 import browser from '../browser';
+import FeatureFlags from '../flags/FeatureFlags';
 
 import SDPUtil from './SDPUtil';
 
@@ -202,31 +204,23 @@ SDP.prototype.toJingle = function(elem, thecreator) {
                 const ssrcMap = SDPUtil.parseSSRC(this.media[i]);
 
                 for (const [ availableSsrc, ssrcParameters ] of ssrcMap) {
+                    const sourceName = SDPUtil.parseSourceNameLine(ssrcParameters);
+
                     elem.c('source', {
                         ssrc: availableSsrc,
+                        name: FeatureFlags.isSourceNameSignalingEnabled() ? sourceName : undefined,
                         xmlns: 'urn:xmpp:jingle:apps:rtp:ssma:0'
                     });
 
-                    ssrcParameters.forEach(ssrcSdpLine => {
-                        // get everything after first space
-                        const idx = ssrcSdpLine.indexOf(' ');
-                        const kv = ssrcSdpLine.substr(idx + 1);
+                    const msid = SDPUtil.parseMSIDAttribute(ssrcParameters);
 
+                    // eslint-disable-next-line max-depth
+                    if (msid) {
                         elem.c('parameter');
-                        if (kv.indexOf(':') === -1) {
-                            elem.attrs({ name: kv });
-                        } else {
-                            const name = kv.split(':', 2)[0];
-
-                            elem.attrs({ name });
-
-                            let v = kv.split(':', 2)[1];
-
-                            v = SDPUtil.filterSpecialChars(v);
-                            elem.attrs({ value: v });
-                        }
+                        elem.attrs({ name: 'msid' });
+                        elem.attrs({ value: msid });
                         elem.up();
-                    });
+                    }
 
                     elem.up();
                 }
@@ -304,16 +298,16 @@ SDP.prototype.toJingle = function(elem, thecreator) {
 
                     // eslint-disable-next-line max-depth
                     switch (extmap.direction) {
-                    case 'sendonly':
+                    case MediaDirection.SENDONLY:
                         elem.attrs({ senders: 'responder' });
                         break;
-                    case 'recvonly':
+                    case MediaDirection.RECVONLY:
                         elem.attrs({ senders: 'initiator' });
                         break;
-                    case 'sendrecv':
+                    case MediaDirection.SENDRECV:
                         elem.attrs({ senders: 'both' });
                         break;
-                    case 'inactive':
+                    case MediaDirection.INACTIVE:
                         elem.attrs({ senders: 'none' });
                         break;
                     }
@@ -330,13 +324,13 @@ SDP.prototype.toJingle = function(elem, thecreator) {
 
         const m = this.media[i];
 
-        if (SDPUtil.findLine(m, 'a=sendrecv', this.session)) {
+        if (SDPUtil.findLine(m, `a=${MediaDirection.SENDRECV}`, this.session)) {
             elem.attrs({ senders: 'both' });
-        } else if (SDPUtil.findLine(m, 'a=sendonly', this.session)) {
+        } else if (SDPUtil.findLine(m, `a=${MediaDirection.SENDONLY}`, this.session)) {
             elem.attrs({ senders: 'initiator' });
-        } else if (SDPUtil.findLine(m, 'a=recvonly', this.session)) {
+        } else if (SDPUtil.findLine(m, `a=${MediaDirection.RECVONLY}`, this.session)) {
             elem.attrs({ senders: 'responder' });
-        } else if (SDPUtil.findLine(m, 'a=inactive', this.session)) {
+        } else if (SDPUtil.findLine(m, `a=${MediaDirection.INACTIVE}`, this.session)) {
             elem.attrs({ senders: 'none' });
         }
 
@@ -357,10 +351,24 @@ SDP.prototype.transportToJingle = function(mediaindex, elem) {
     elem.c('transport');
 
     // XEP-0343 DTLS/SCTP
+    const sctpport
+        = SDPUtil.findLine(this.media[mediaindex], 'a=sctp-port:', this.session);
     const sctpmap
         = SDPUtil.findLine(this.media[mediaindex], 'a=sctpmap:', this.session);
 
-    if (sctpmap) {
+    if (sctpport) {
+        const sctpAttrs = SDPUtil.parseSCTPPort(sctpport);
+
+        elem.c('sctpmap', {
+            xmlns: 'urn:xmpp:jingle:transports:dtls-sctp:1',
+            number: sctpAttrs, /* SCTP port */
+            protocol: 'webrtc-datachannel' /* protocol */
+        });
+
+        // The parser currently requires streams to be present
+        elem.attrs({ streams: 0 });
+        elem.up();
+    } else if (sctpmap) {
         const sctpAttrs = SDPUtil.parseSCTPMap(sctpmap);
 
         elem.c('sctpmap', {
@@ -372,6 +380,8 @@ SDP.prototype.transportToJingle = function(mediaindex, elem) {
         // Optional stream count attribute
         if (sctpAttrs.length > 2) {
             elem.attrs({ streams: sctpAttrs[2] });
+        } else {
+            elem.attrs({ streams: 0 });
         }
         elem.up();
     }
@@ -556,28 +566,20 @@ SDP.prototype.jingle2media = function(content) {
 
     const media = { media: desc.attr('media') };
 
-    media.port = '1';
+    media.port = '9';
     if (content.attr('senders') === 'rejected') {
         // estos hack to reject an m-line.
         media.port = '0';
     }
     if (transport.find('>fingerprint[xmlns="urn:xmpp:jingle:apps:dtls:0"]').length) {
-        media.proto = sctp.length ? 'DTLS/SCTP' : 'RTP/SAVPF';
+        media.proto = sctp.length ? 'UDP/DTLS/SCTP' : 'UDP/TLS/RTP/SAVPF';
     } else {
-        media.proto = 'RTP/AVPF';
+        media.proto = 'UDP/TLS/RTP/SAVPF';
     }
     if (sctp.length) {
-        sdp += `m=application ${media.port} DTLS/SCTP ${
-            sctp.attr('number')}\r\n`;
-        sdp += `a=sctpmap:${sctp.attr('number')} ${sctp.attr('protocol')}`;
-
-        const streamCount = sctp.attr('streams');
-
-        if (streamCount) {
-            sdp += ` ${streamCount}\r\n`;
-        } else {
-            sdp += '\r\n';
-        }
+        sdp += `m=application ${media.port} UDP/DTLS/SCTP webrtc-datachannel\r\n`;
+        sdp += `a=sctp-port:${sctp.attr('number')}\r\n`;
+        sdp += 'a=max-message-size:262144\r\n';
     } else {
         media.fmt
             = desc
@@ -631,16 +633,16 @@ SDP.prototype.jingle2media = function(content) {
 
     switch (content.attr('senders')) {
     case 'initiator':
-        sdp += 'a=sendonly\r\n';
+        sdp += `a=${MediaDirection.SENDONLY}\r\n`;
         break;
     case 'responder':
-        sdp += 'a=recvonly\r\n';
+        sdp += `a=${MediaDirection.RECVONLY}\r\n`;
         break;
     case 'none':
-        sdp += 'a=inactive\r\n';
+        sdp += `a=${MediaDirection.INACTIVE}\r\n`;
         break;
     case 'both':
-        sdp += 'a=sendrecv\r\n';
+        sdp += `a=${MediaDirection.SENDRECV}\r\n`;
         break;
     }
     sdp += `a=mid:${content.attr('name')}\r\n`;
@@ -705,10 +707,15 @@ SDP.prototype.jingle2media = function(content) {
         });
 
     // XEP-0339 handle source attributes
+    let userSources = '';
+    let nonUserSources = '';
+
     desc
         .find('>source[xmlns="urn:xmpp:jingle:apps:rtp:ssma:0"]')
         .each((_, source) => {
             const ssrc = source.getAttribute('ssrc');
+            let isUserSource = true;
+            let sourceStr = '';
 
             $(source)
                 .find('>parameter')
@@ -717,13 +724,29 @@ SDP.prototype.jingle2media = function(content) {
                     let value = parameter.getAttribute('value');
 
                     value = SDPUtil.filterSpecialChars(value);
-                    sdp += `a=ssrc:${ssrc} ${name}`;
+                    sourceStr += `a=ssrc:${ssrc} ${name}`;
+
                     if (value && value.length) {
-                        sdp += `:${value}`;
+                        sourceStr += `:${value}`;
                     }
-                    sdp += '\r\n';
+
+                    sourceStr += '\r\n';
+
+                    if (value?.includes('mixedmslabel')) {
+                        isUserSource = false;
+                    }
                 });
+
+            if (isUserSource) {
+                userSources += sourceStr;
+            } else {
+                nonUserSources += sourceStr;
+            }
         });
+
+    // The sdp-interop package is relying the mixedmslabel m line to be the first one in order to set the direction
+    // to sendrecv.
+    sdp += nonUserSources + userSources;
 
     return sdp;
 };

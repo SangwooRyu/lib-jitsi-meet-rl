@@ -20,6 +20,8 @@ TRACK_ERROR_TO_MESSAGE_MAP[JitsiTrackErrors.NOT_FOUND]
     = 'Requested device(s) was/were not found: ';
 TRACK_ERROR_TO_MESSAGE_MAP[JitsiTrackErrors.CONSTRAINT_FAILED]
     = 'Constraint could not be satisfied: ';
+TRACK_ERROR_TO_MESSAGE_MAP[JitsiTrackErrors.TIMEOUT]
+    = 'Could not start media source. Timeout occured!';
 TRACK_ERROR_TO_MESSAGE_MAP[JitsiTrackErrors.TRACK_IS_DISPOSED]
     = 'Track has been already disposed';
 TRACK_ERROR_TO_MESSAGE_MAP[JitsiTrackErrors.TRACK_NO_STREAM_FOUND]
@@ -130,7 +132,7 @@ function JitsiTrackError(error, options, devices) {
         throw new Error('Invalid arguments');
     }
 
-    this.stack = error.stack || (new Error()).stack;
+    this.stack = error.stack || new Error().stack;
 }
 
 JitsiTrackError.prototype = Object.create(Error.prototype);

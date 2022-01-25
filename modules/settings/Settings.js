@@ -1,5 +1,5 @@
 import { jitsiLocalStorage } from '@jitsi/js-utils';
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 const logger = getLogger(__filename);
 
@@ -51,8 +51,13 @@ export default {
      */
     get machineId() {
         if (!_machineId) {
-            _machineId = this._storage.getItem('jitsiMeetId');
-            if (!_machineId) {
+            const amDid = this._storage.getItem('billingId');
+
+            _machineId = amDid || this._storage.getItem('jitsiMeetId');
+
+            if (amDid) {
+                this._storage.setItem('jitsiMeetId', amDid);
+            } else if (!_machineId) {
                 _machineId = generateJitsiMeetId();
                 this._storage.setItem('jitsiMeetId', _machineId);
             }

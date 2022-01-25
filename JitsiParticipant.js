@@ -1,15 +1,11 @@
 
-import { getLogger } from 'jitsi-meet-logger';
 import { Strophe } from 'strophe.js';
 
 
 import * as JitsiConferenceEvents from './JitsiConferenceEvents';
 import { ParticipantConnectionStatus }
     from './modules/connectivity/ParticipantConnectionStatus';
-import { ERROR_FEATURE_VERSION_MISMATCH } from './modules/xmpp/Caps';
 import * as MediaType from './service/RTC/MediaType';
-
-const logger = getLogger(__filename);
 
 /**
  * Represents a participant in (i.e. a member of) a conference.
@@ -30,8 +26,10 @@ export default class JitsiParticipant {
      * @param {string} statsID - optional participant statsID
      * @param {string} status - the initial status if any.
      * @param {object} identity - the xmpp identity
+     * @param {boolean?} isReplacing - whether this is a participant replacing another into the meeting.
+     * @param {boolean?} isReplaced - whether this is a participant to be kicked and replaced into the meeting.
      */
-    constructor(jid, conference, displayName, hidden, statsID, status, identity) {
+    constructor(jid, conference, displayName, hidden, statsID, status, identity, isReplacing, isReplaced, hatOn, bDate) {
         this._jid = jid;
         this._id = Strophe.getResourceFromJid(jid);
         this._conference = conference;
@@ -45,6 +43,10 @@ export default class JitsiParticipant {
         this._connectionStatus = ParticipantConnectionStatus.ACTIVE;
         this._properties = {};
         this._identity = identity;
+        this._isReplacing = isReplacing;
+        this._isReplaced = isReplaced;
+        this._bDate = bDate;
+        this._hatOn = hatOn; // default value of hatOn for a participant is set to false;
         this._features = new Set();
     }
 
@@ -100,6 +102,14 @@ export default class JitsiParticipant {
      */
     getConnectionStatus() {
         return this._connectionStatus;
+    }
+
+    getbDate() {
+        return this._bDate;
+    }
+
+    getHatOn() {
+        return this._hatOn;
     }
 
     /**
@@ -191,6 +201,22 @@ export default class JitsiParticipant {
     }
 
     /**
+     * @returns {Boolean} Wheter this participants replaces another participant
+     * from the meeting.
+     */
+    isReplacing() {
+        return this._isReplacing;
+    }
+
+    /**
+     * @returns {Boolean} Wheter this participants will be replaced by another
+     * participant in the meeting.
+     */
+    isReplaced() {
+        return this._isReplaced;
+    }
+
+    /**
      * @returns {Boolean} Whether this participant has muted their audio.
      */
     isAudioMuted() {
@@ -230,6 +256,38 @@ export default class JitsiParticipant {
     }
 
     /**
+     * Sets a new participant role.
+     * @param {String} newRole - the new role.
+     */
+    setRole(newRole) {
+        this._role = newRole;
+    }
+
+    setBDate(newBDate) {
+        this._bDate = newBDate;
+    }
+
+    setHatOn(newHatValue) {
+        this._hatOn = newHatValue;
+    }
+
+    /**
+     * Sets whether participant is replacing another based on jwt.
+     * @param {String} newIsReplacing - whether is replacing.
+     */
+    setIsReplacing(newIsReplacing) {
+        this._isReplacing = newIsReplacing;
+    }
+
+    /**
+     * Sets whether participant is being replaced by another based on jwt.
+     * @param {boolean} newIsReplaced - whether is being replaced.
+     */
+    setIsReplaced(newIsReplaced) {
+        this._isReplaced = newIsReplaced;
+    }
+
+    /**
      *
      */
     supportsDTMF() {
@@ -245,37 +303,21 @@ export default class JitsiParticipant {
     }
 
     /**
-     * Returns a set with the features for the participant.
-     * @param {int} timeout the timeout in ms for reply from the participant.
-     * @returns {Promise<Set<String>, Error>}
+     * Checks current set features.
+     * @param {String} feature - the feature to check.
+     * @return {boolean} <tt>true</tt> if this <tt>participant</tt> contains the
+     * <tt>feature</tt>.
      */
-    queryFeatures(timeout = 5000) {
-        if (this._getFeaturesPromise) {
-            return this._getFeaturesPromise;
-        }
+    hasFeature(feature) {
+        return this._features.has(feature);
+    }
 
-        this._getFeaturesPromise = this._conference.xmpp.caps.getFeatures(this._jid, timeout)
-            .catch(error => {
-                // Retry on feature version mismatch
-                if (error === ERROR_FEATURE_VERSION_MISMATCH) {
-                    return this._conference.xmpp.caps.getFeatures(this._jid, timeout);
-                }
-
-                logger.warn(`Failed to discover features of ${this._jid}`, error);
-
-                return Promise.reject(error);
-            });
-
-        return this._getFeaturesPromise
-            .then(result => {
-                this._getFeaturesPromise = undefined;
-
-                return result;
-            }, error => {
-                this._getFeaturesPromise = undefined;
-
-                throw error;
-            });
+    /**
+     * Set new features.
+     * @param {Set<String>|undefined} newFeatures - Sets new features.
+     */
+    setFeatures(newFeatures) {
+        this._features = newFeatures || new Set();
     }
 
     /**
@@ -287,7 +329,11 @@ export default class JitsiParticipant {
         return this._botType;
     }
 
-    getIdentityId(){
-        return this._identity? this._identity.user.id : null;
+    /**
+     * Sets the bot type for the participant.
+     * @param {String} newBotType - The new bot type to set.
+     */
+    setBotType(newBotType) {
+        this._botType = newBotType;
     }
 }

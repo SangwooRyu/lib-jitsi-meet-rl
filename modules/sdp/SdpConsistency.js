@@ -1,6 +1,4 @@
-/* global __filename */
-
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import {
     parsePrimarySSRC,
@@ -77,9 +75,7 @@ export default class SdpConsistency {
         const videoMLine = sdpTransformer.selectMedia('video');
 
         if (!videoMLine) {
-            logger.debug(
-                `${this.logPrefix} no 'video' media found in the sdp: `
-                    + `${sdpStr}`);
+            logger.debug(`${this.logPrefix} no 'video' media found in the sdp: ${sdpStr}`);
 
             return sdpStr;
         }
@@ -94,25 +90,17 @@ export default class SdpConsistency {
                     value: `recvonly-${this.cachedPrimarySsrc}`
                 });
             } else {
-                logger.info(
-                    `${this.logPrefix} no SSRC found for the recvonly video`
-                        + 'stream!');
+                logger.info(`${this.logPrefix} no SSRC found for the recvonly video stream!`);
             }
         } else {
             const newPrimarySsrc = videoMLine.getPrimaryVideoSsrc();
 
             if (!newPrimarySsrc) {
-                logger.info(
-                    `${this.logPrefix} sdp-consistency couldn't`
-                        + ' parse new primary ssrc');
+                logger.info(`${this.logPrefix} sdp-consistency couldn't parse new primary ssrc`);
 
                 return sdpStr;
             }
             if (this.cachedPrimarySsrc) {
-                logger.info(
-                    `${this.logPrefix} sdp-consistency replacing new ssrc`
-                        + `${newPrimarySsrc} with cached `
-                        + `${this.cachedPrimarySsrc}`);
                 videoMLine.replaceSSRC(newPrimarySsrc, this.cachedPrimarySsrc);
                 for (const group of videoMLine.ssrcGroups) {
                     if (group.semantics === 'FID') {
@@ -128,11 +116,7 @@ export default class SdpConsistency {
                 }
             } else {
                 this.cachedPrimarySsrc = newPrimarySsrc;
-                logger.info(
-                    `${this.logPrefix} sdp-consistency caching primary ssrc`
-                        + `${this.cachedPrimarySsrc}`);
             }
-
             this.injectRecvOnly = true;
         }
 

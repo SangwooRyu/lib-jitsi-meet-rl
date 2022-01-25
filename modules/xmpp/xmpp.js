@@ -1,6 +1,6 @@
 /* global $ */
 
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 import { $msg, Strophe } from 'strophe.js';
 import 'strophejs-plugin-disco';
 
@@ -9,11 +9,12 @@ import * as JitsiConnectionEvents from '../../JitsiConnectionEvents';
 import XMPPEvents from '../../service/xmpp/XMPPEvents';
 import browser from '../browser';
 import { E2EEncryption } from '../e2ee/E2EEncryption';
+import Statistics from '../statistics/statistics';
 import GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import Listenable from '../util/Listenable';
 import RandomUtil from '../util/RandomUtil';
 
-import Caps from './Caps';
+import Caps, { parseDiscoInfo } from './Caps';
 import XmppConnection from './XmppConnection';
 import MucConnectionPlugin from './strophe.emuc';
 import JingleConnectionPlugin from './strophe.jingle';
@@ -22,6 +23,11 @@ import RayoConnectionPlugin from './strophe.rayo';
 import initStropheUtil from './strophe.util';
 
 const logger = getLogger(__filename);
+
+/**
+* Regex to extract exact error message on jwt error.
+*/
+const FAILURE_REGEX = /<failure.*><not-allowed\/><text>(.*)<\/text><\/failure>/gi;
 
 /**
  * Creates XMPP connection.
@@ -33,6 +39,7 @@ const logger = getLogger(__filename);
  * @param {string} options.shard - The shard where XMPP connection initially landed.
  * @param {string} options.enableWebsocketResume - True to enable stream resumption.
  * @param {number} [options.websocketKeepAlive] - See {@link XmppConnection} constructor.
+ * @param {number} [options.websocketKeepAliveUrl] - See {@link XmppConnection} constructor.
  * @param {Object} [options.xmppPing] - See {@link XmppConnection} constructor.
  * @returns {XmppConnection}
  */
@@ -42,6 +49,7 @@ function createConnection({
     shard,
     token,
     websocketKeepAlive,
+    websocketKeepAliveUrl,
     xmppPing }) {
 
     // Append token as URL param
@@ -54,6 +62,7 @@ function createConnection({
         enableWebsocketResume,
         serviceUrl,
         websocketKeepAlive,
+        websocketKeepAliveUrl,
         xmppPing,
         shard
     });
@@ -113,6 +122,8 @@ export default class XMPP extends Listenable {
      * module try to resume the session in case the Websocket connection breaks.
      * @param {number} [options.websocketKeepAlive] - The websocket keep alive interval. See {@link XmppConnection}
      * constructor for more details.
+     * @param {number} [options.websocketKeepAliveUrl] - The websocket keep alive url. See {@link XmppConnection}
+     * constructor for more details.
      * @param {Object} [options.xmppPing] - The xmpp ping settings.
      * @param {Array<Object>} options.p2pStunServers see {@link JingleConnectionPlugin} for more details.
      * @param token
@@ -140,6 +151,7 @@ export default class XMPP extends Listenable {
             serviceUrl: options.serviceUrl || options.bosh,
             token,
             websocketKeepAlive: options.websocketKeepAlive,
+            websocketKeepAliveUrl: options.websocketKeepAliveUrl,
             xmppPing,
             shard: options.deploymentInfo?.shard
         });
@@ -164,7 +176,7 @@ export default class XMPP extends Listenable {
 
         this._initStrophePlugins();
 
-        this.caps = new Caps(this.connection, this.options.clientNode);
+        this.caps = new Caps(this.connection, /* clientNode */ 'https://jitsi.org/jitsi-meet');
 
         // Initialize features advertised in disco-info
         this.initFeaturesList();
@@ -174,7 +186,7 @@ export default class XMPP extends Listenable {
         // they wanted to utilize the connected connection in an unload handler
         // of their own. However, it should be fairly easy for them to do that
         // by registering their unload handler before us.
-        $(window).on('beforeunload unload', ev => {
+        $(window).on(`${this.options.disableBeforeUnloadHandlers ? '' : 'beforeunload '}unload`, ev => {
             this.disconnect(ev).catch(() => {
                 // ignore errors in order to not brake the unload.
             });
@@ -195,13 +207,9 @@ export default class XMPP extends Listenable {
         this.caps.addFeature('urn:xmpp:jingle:transports:dtls-sctp:1');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:audio');
         this.caps.addFeature('urn:xmpp:jingle:apps:rtp:video');
+        this.caps.addFeature('http://jitsi.org/json-encoded-sources');
 
-        //add HTTP file upload feature to the XMPP server
-        this.caps.addFeature('urn:xmpp:http:upload:0');
-
-        // Disable RTX on Firefox 83 and older versions because of
-        // https://bugzilla.mozilla.org/show_bug.cgi?id=1668028
-        if (!(this.options.disableRtx || (browser.isFirefox() && browser.isVersionLessThan(84)))) {
+        if (!(this.options.disableRtx || !browser.supportsRTX())) {
             this.caps.addFeature('urn:ietf:rfc:4588');
         }
         if (this.options.enableOpusRed === true && browser.supportsAudioRed()) {
@@ -211,7 +219,9 @@ export default class XMPP extends Listenable {
         if (typeof this.options.enableRemb === 'undefined' || this.options.enableRemb) {
             this.caps.addFeature('http://jitsi.org/remb');
         }
-        if (typeof this.options.enableTcc === 'undefined' || this.options.enableTcc) {
+
+        // Disable TCC on Firefox because of a known issue where BWE is halved on every renegotiation.
+        if (!browser.isFirefox() && (typeof this.options.enableTcc === 'undefined' || this.options.enableTcc)) {
             this.caps.addFeature('http://jitsi.org/tcc');
         }
 
@@ -269,59 +279,32 @@ export default class XMPP extends Listenable {
             now);
 
         this.eventEmitter.emit(XMPPEvents.CONNECTION_STATUS_CHANGED, credentials, status, msg);
+        this._maybeSendDeploymentInfoStat();
         if (status === Strophe.Status.CONNECTED || status === Strophe.Status.ATTACHED) {
-            this.connection.jingle.getStunAndTurnCredentials();
+            // once connected or attached we no longer need this handle, drop it if it exist
+            if (this._sysMessageHandler) {
+                this.connection._stropheConn.deleteHandler(this._sysMessageHandler);
+                this._sysMessageHandler = null;
+            }
+
+            this.sendDiscoInfo && this.connection.jingle.getStunAndTurnCredentials();
 
             logger.info(`My Jabber ID: ${this.connection.jid}`);
 
             // XmppConnection emits CONNECTED again on reconnect - a good opportunity to clear any "last error" flags
             this._resetState();
 
-            // FIXME no need to do it again on stream resume
-            this.caps.getFeaturesAndIdentities(this.options.hosts.domain)
+            // make sure we will send the info after the features request succeeds or fails
+            this.sendDeploymentInfo = false;
+            this.sendDiscoInfo && this.caps.getFeaturesAndIdentities(this.options.hosts.domain)
                 .then(({ features, identities }) => {
                     if (!features.has(Strophe.NS.PING)) {
                         logger.error(`Ping NOT supported by ${
                             this.options.hosts.domain} - please enable ping in your XMPP server config`);
                     }
 
-                    // check for speakerstats
-                    identities.forEach(identity => {
-                        if (identity.type === 'speakerstats') {
-                            this.speakerStatsComponentAddress = identity.name;
-                        }
-
-                        if (identity.type === 'conference_duration') {
-                            this.conferenceDurationComponentAddress = identity.name;
-                        }
-
-                        if (identity.type === 'lobbyrooms') {
-                            this.lobbySupported = true;
-                            identity.name && this.caps.getFeaturesAndIdentities(identity.name, identity.type)
-                                .then(({ features: f }) => {
-                                    f.forEach(fr => {
-                                        if (fr.endsWith('#displayname_required')) {
-                                            this.eventEmitter.emit(
-                                                JitsiConnectionEvents.DISPLAY_NAME_REQUIRED);
-                                        }
-                                    });
-                                })
-                                .catch(e => logger.warn('Error getting features from lobby.', e && e.message));
-                        }
-
-                        if (identity.type === 'participant_log') {
-                            this.plogComponentAddress = identity.name;
-                            logger.info('Found Participant Log Component');
-                        }
-                    });
-
-                    if (this.speakerStatsComponentAddress
-                        || this.conferenceDurationComponentAddress
-                        || this.plogComponentAddress) {
-                        this.connection.addHandler(
-                            this._onPrivateMessage.bind(this), null,
-                            'message', null, null);
-                    }
+                    this._processDiscoInfoIdentities(
+                        identities, undefined /* when querying we will query for features */);
                 })
                 .catch(error => {
                     const errmsg = 'Feature discovery error';
@@ -329,7 +312,12 @@ export default class XMPP extends Listenable {
                     GlobalOnErrorHandler.callErrorHandler(
                         new Error(`${errmsg}: ${error}`));
                     logger.error(errmsg, error);
+
+                    this._maybeSendDeploymentInfoStat(true);
                 });
+
+            // make sure we don't query again
+            this.sendDiscoInfo = false;
 
             if (credentials.password) {
                 this.authenticatedUser = true;
@@ -406,13 +394,94 @@ export default class XMPP extends Listenable {
                 }
             }
         } else if (status === Strophe.Status.AUTHFAIL) {
+            const lastFailedRawMessage = this.getConnection().getLastFailedMessage();
+
             // wrong password or username, prompt user
             this.eventEmitter.emit(
                 JitsiConnectionEvents.CONNECTION_FAILED,
                 JitsiConnectionErrors.PASSWORD_REQUIRED,
-                msg,
+                msg || this._parseConnectionFailedMessage(lastFailedRawMessage),
                 credentials);
         }
+    }
+
+    /**
+     * Process received identities.
+     * @param {Set<String>} identities The identities to process.
+     * @param {Set<String>} features The features to process, optional. If missing lobby component will be queried
+     * for more features.
+     * @private
+     */
+    _processDiscoInfoIdentities(identities, features) {
+        // check for speakerstats
+        identities.forEach(identity => {
+            if (identity.type === 'av_moderation') {
+                this.avModerationComponentAddress = identity.name;
+            }
+
+            if (identity.type === 'speakerstats') {
+                this.speakerStatsComponentAddress = identity.name;
+            }
+
+            if (identity.type === 'conference_duration') {
+                this.conferenceDurationComponentAddress = identity.name;
+            }
+
+            if (identity.type === 'lobbyrooms') {
+                this.lobbySupported = true;
+                const processLobbyFeatures = f => {
+                    f.forEach(fr => {
+                        if (fr.endsWith('#displayname_required')) {
+                            this.eventEmitter.emit(JitsiConnectionEvents.DISPLAY_NAME_REQUIRED);
+                        }
+                    });
+                };
+
+                if (features) {
+                    processLobbyFeatures(features);
+                } else {
+                    identity.name && this.caps.getFeaturesAndIdentities(identity.name, identity.type)
+                        .then(({ features: f }) => processLobbyFeatures(f))
+                        .catch(e => logger.warn('Error getting features from lobby.', e && e.message));
+                }
+            }
+
+            if (identity.type === 'shard') {
+                this.options.deploymentInfo.shard = this.connection.shard = identity.name;
+            }
+
+            if (identity.type === 'region') {
+                this.options.deploymentInfo.region = this.connection.region = identity.name;
+            }
+
+            if (identity.type === 'breakout_rooms') {
+                this.breakoutRoomsComponentAddress = identity.name;
+            }
+        });
+
+        this._maybeSendDeploymentInfoStat(true);
+
+        if (this.avModerationComponentAddress
+            || this.speakerStatsComponentAddress
+            || this.conferenceDurationComponentAddress) {
+            this.connection.addHandler(this._onPrivateMessage.bind(this), null, 'message', null, null);
+        }
+    }
+
+    /**
+    * Parses a raw failure xmpp xml message received on auth failed.
+    *
+    * @param {string} msg - The raw failure message from xmpp.
+    * @returns {string|null} - The parsed message from the raw xmpp message.
+    */
+    _parseConnectionFailedMessage(msg) {
+        if (!msg) {
+            return null;
+        }
+
+        const matches = FAILURE_REGEX.exec(msg);
+
+        return matches ? matches[1] : null;
     }
 
     /**
@@ -449,6 +518,21 @@ export default class XMPP extends Listenable {
         //  Status.ATTACHED - The connection has been attached
 
         this._resetState();
+
+        // we want to send this only on the initial connect
+        this.sendDiscoInfo = true;
+        this.sendDeploymentInfo = true;
+
+        if (this.connection._stropheConn && this.connection._stropheConn._addSysHandler) {
+            this._sysMessageHandler = this.connection._stropheConn._addSysHandler(
+                this._onSystemMessage.bind(this),
+                null,
+                'message'
+            );
+        } else {
+            logger.warn('Cannot attach strophe system handler, jiconop cannot operate');
+        }
+
         this.connection.connect(
             jid,
             password,
@@ -456,6 +540,32 @@ export default class XMPP extends Listenable {
                 jid,
                 password
             }));
+    }
+
+    /**
+     * Receives system messages during the connect/login process and checks for services or
+     * @param msg The received message.
+     * @returns {void}
+     * @private
+     */
+    _onSystemMessage(msg) {
+        // proceed only if the message has any of the expected information
+        if ($(msg).find('>services').length === 0 && $(msg).find('>query').length === 0) {
+            return;
+        }
+
+        this.sendDiscoInfo = false;
+
+        const foundIceServers = this.connection.jingle.onReceiveStunAndTurnCredentials(msg);
+
+        const { features, identities } = parseDiscoInfo(msg);
+
+        this._processDiscoInfoIdentities(identities, features);
+
+        if (foundIceServers || identities.size > 0 || features.size > 0) {
+            this.connection._stropheConn.deleteHandler(this._sysMessageHandler);
+            this._sysMessageHandler = null;
+        }
     }
 
     /**
@@ -467,6 +577,10 @@ export default class XMPP extends Listenable {
      */
     attach(options) {
         this._resetState();
+
+        // we want to send this only on the initial connect
+        this.sendDiscoInfo = true;
+
         const now = this.connectionTimes.attaching = window.performance.now();
 
         logger.log('(TIME) Strophe Attaching:\t', now);
@@ -535,10 +649,11 @@ export default class XMPP extends Listenable {
      * @returns {Promise} Resolves with an instance of a strophe muc.
      */
     createRoom(roomName, options, onCreateResource) {
-        // There are cases (when using subdomain) where muc can hold an uppercase part
-        let roomjid = `${roomName}@${options.customDomain
-            ? options.customDomain : this.options.hosts.muc.toLowerCase()}/`;
+        // Support passing the domain in a String object as part of the room name.
+        const domain = roomName.domain || options.customDomain;
 
+        // There are cases (when using subdomain) where muc can hold an uppercase part
+        let roomjid = `${this.getRoomJid(roomName, domain)}/`;
         const mucNickname = onCreateResource
             ? onCreateResource(this.connection.jid, this.authenticatedUser)
             : RandomUtil.randomHexString(8).toLowerCase();
@@ -547,6 +662,29 @@ export default class XMPP extends Listenable {
         roomjid += mucNickname;
 
         return this.connection.emuc.createRoom(roomjid, null, options);
+    }
+
+    /**
+     * Returns the room JID based on the passed room name and domain.
+     *
+     * @param {string} roomName - The room name.
+     * @param {string} domain - The domain.
+     * @returns {string} - The room JID.
+     */
+    getRoomJid(roomName, domain) {
+        const roomDomain = domain
+            || (/_[-\da-f]{36}$/.test(roomName) ? `breakout.${this.options.hosts.domain}` : this.options.hosts.muc);
+        return `${roomName}@${roomDomain.toLowerCase()}`;
+    }
+
+    /**
+     * Check if a room with the passed JID is already created.
+     *
+     * @param {string} roomJid - The JID of the room.
+     * @returns {boolean}
+     */
+    isRoomCreated(roomName, domain) {
+        return this.connection.emuc.isRoomCreated(this.getRoomJid(roomName, domain));
     }
 
     /**
@@ -771,6 +909,29 @@ export default class XMPP extends Listenable {
     }
 
     /**
+     * Sends facial expression to speaker stats component.
+     * @param {String} roomJid - The room jid where the speaker event occurred.
+     * @param {Object} payload - The expression to be sent to the speaker stats.
+     */
+    sendFacialExpressionEvent(roomJid, payload) {
+        // no speaker stats component advertised
+        if (!this.speakerStatsComponentAddress || !roomJid) {
+            return;
+        }
+
+        const msg = $msg({ to: this.speakerStatsComponentAddress });
+
+        msg.c('facialExpression', {
+            xmlns: 'http://jitsi.org/jitmeet',
+            room: roomJid,
+            expression: payload.facialExpression,
+            duration: payload.duration
+        }).up();
+
+        this.connection.send(msg);
+    }
+
+    /**
      * Check if the given argument is a valid JSON ENDPOINT_MESSAGE string by
      * parsing it and checking if it has a field called 'type'.
      *
@@ -780,6 +941,11 @@ export default class XMPP extends Listenable {
      * the json object. Otherwise, returns false.
      */
     tryParseJSONAndVerify(jsonString) {
+        // ignore empty strings, like message errors
+        if (!jsonString) {
+            return false;
+        }
+
         try {
             const json = JSON.parse(jsonString);
 
@@ -801,7 +967,7 @@ export default class XMPP extends Listenable {
                     + 'structure', 'topic: ', type);
             }
         } catch (e) {
-            logger.error(e);
+            logger.error(`Error parsing json ${jsonString}`, e);
 
             return false;
         }
@@ -821,7 +987,8 @@ export default class XMPP extends Listenable {
 
         if (!(from === this.speakerStatsComponentAddress
             || from === this.conferenceDurationComponentAddress
-            || from === this.plogComponentAddress)) {
+            || from === this.avModerationComponentAddress
+            || from === this.breakoutRoomsComponentAddress)) {
             return true;
         }
 
@@ -829,18 +996,18 @@ export default class XMPP extends Listenable {
             .text();
         const parsedJson = this.tryParseJSONAndVerify(jsonMessage);
 
-        if (parsedJson
-            && parsedJson[JITSI_MEET_MUC_TYPE] === 'speakerstats'
-            && parsedJson.users) {
-            this.eventEmitter.emit(
-                XMPPEvents.SPEAKER_STATS_RECEIVED, parsedJson.users);
+        if (!parsedJson) {
+            return true;
         }
 
-        if (parsedJson
-            && parsedJson[JITSI_MEET_MUC_TYPE] === 'conference_duration'
-            && parsedJson.created_timestamp) {
-            this.eventEmitter.emit(
-                XMPPEvents.CONFERENCE_TIMESTAMP_RECEIVED, parsedJson.created_timestamp);
+        if (parsedJson[JITSI_MEET_MUC_TYPE] === 'speakerstats' && parsedJson.users) {
+            this.eventEmitter.emit(XMPPEvents.SPEAKER_STATS_RECEIVED, parsedJson.users);
+        } else if (parsedJson[JITSI_MEET_MUC_TYPE] === 'conference_duration' && parsedJson.created_timestamp) {
+            this.eventEmitter.emit(XMPPEvents.CONFERENCE_TIMESTAMP_RECEIVED, parsedJson.created_timestamp);
+        } else if (parsedJson[JITSI_MEET_MUC_TYPE] === 'av_moderation') {
+            this.eventEmitter.emit(XMPPEvents.AV_MODERATION_RECEIVED, parsedJson);
+        } else if (parsedJson[JITSI_MEET_MUC_TYPE] === 'breakout_rooms') {
+            this.eventEmitter.emit(XMPPEvents.BREAKOUT_ROOMS_EVENT, parsedJson);
         }
 
         if (parsedJson
@@ -851,5 +1018,46 @@ export default class XMPP extends Listenable {
         }
 
         return true;
+    }
+
+    /**
+     * Sends deployment info to stats if not sent already.
+     * We want to try sending it on failure to connect
+     * or when we get a sys message(from jiconop2)
+     * or after success or failure of disco-info
+     * @param force Whether to force sending without checking anything.
+     * @private
+     */
+    _maybeSendDeploymentInfoStat(force) {
+        const acceptedStatuses = [
+            Strophe.Status.ERROR,
+            Strophe.Status.CONNFAIL,
+            Strophe.Status.AUTHFAIL,
+            Strophe.Status.DISCONNECTED,
+            Strophe.Status.CONNTIMEOUT
+        ];
+
+        if (!force && !(acceptedStatuses.includes(this.connection.status) && this.sendDeploymentInfo)) {
+            return;
+        }
+
+        // Log deployment-specific information, if available. Defined outside
+        // the application by individual deployments
+        const aprops = this.options.deploymentInfo;
+
+        if (aprops && Object.keys(aprops).length > 0) {
+            const logObject = {};
+
+            logObject.id = 'deployment_info';
+            for (const attr in aprops) {
+                if (aprops.hasOwnProperty(attr)) {
+                    logObject[attr] = aprops[attr];
+                }
+            }
+
+            Statistics.sendLog(JSON.stringify(logObject));
+        }
+
+        this.sendDeploymentInfo = false;
     }
 }

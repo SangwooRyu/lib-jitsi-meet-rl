@@ -1,6 +1,4 @@
-/* global __filename, Promise */
-
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import JitsiTrackError from '../../JitsiTrackError';
 import {
@@ -81,6 +79,19 @@ export default class JitsiLocalTrack extends JitsiTrack {
             this._startStreamEffect(effect);
         }
 
+        const displaySurface = videoType === VideoType.DESKTOP
+            ? track.getSettings().displaySurface
+            : null;
+
+        /**
+         * Track metadata.
+         */
+        this.metadata = {
+            timestamp: Date.now(),
+            ...displaySurface ? { displaySurface } : {}
+        };
+
+
         /**
          * The ID assigned by the RTC module on instance creation.
          *
@@ -90,29 +101,21 @@ export default class JitsiLocalTrack extends JitsiTrack {
         this.sourceId = sourceId;
         this.sourceType = sourceType;
 
-        if (browser.usesNewGumFlow()) {
-            // Get the resolution from the track itself because it cannot be
-            // certain which resolution webrtc has fallen back to using.
-            this.resolution = track.getSettings().height;
-            this.maxEnabledResolution = resolution;
+        // Get the resolution from the track itself because it cannot be
+        // certain which resolution webrtc has fallen back to using.
+        this.resolution = track.getSettings().height;
+        this.maxEnabledResolution = resolution;
 
-            // Cache the constraints of the track in case of any this track
-            // model needs to call getUserMedia again, such as when unmuting.
-            this._constraints = track.getConstraints();
+        // Cache the constraints of the track in case of any this track
+        // model needs to call getUserMedia again, such as when unmuting.
+        this._constraints = track.getConstraints();
 
-            // Safari returns an empty constraints object, construct the constraints using getSettings.
-            if (!Object.keys(this._constraints).length && videoType === VideoType.CAMERA) {
-                this._constraints = {
-                    height: track.getSettings().height,
-                    width: track.getSettings().width
-                };
-            }
-        } else {
-            // FIXME Currently, Firefox is ignoring our constraints about
-            // resolutions so we do not store it, to avoid wrong reporting of
-            // local track resolution.
-            this.resolution = browser.isFirefox() ? null : resolution;
-            this.maxEnabledResolution = this.resolution;
+        // Safari returns an empty constraints object, construct the constraints using getSettings.
+        if (!Object.keys(this._constraints).length && videoType === VideoType.CAMERA) {
+            this._constraints = {
+                height: track.getSettings().height,
+                width: track.getSettings().width
+            };
         }
 
         this.deviceId = deviceId;
@@ -202,6 +205,15 @@ export default class JitsiLocalTrack extends JitsiTrack {
         RTCUtils.addListener(RTCEvents.DEVICE_LIST_WILL_CHANGE, this._onDeviceListWillChange);
 
         this._initNoDataFromSourceHandlers();
+    }
+
+    /**
+     * Get the duration of the track.
+     *
+     * @returns {Number} the duration of the track in seconds
+     */
+    getDuration() {
+        return (Date.now() / 1000) - (this.metadata.timestamp / 1000);
     }
 
     /**
@@ -352,7 +364,7 @@ export default class JitsiLocalTrack extends JitsiTrack {
             this._streamEffect.stopEffect();
             this._setStream(this._originalStream);
             this._originalStream = null;
-            this.track = this.stream.getTracks()[0];
+            this.track = this.stream ? this.stream.getTracks()[0] : null;
         }
     }
 
@@ -402,29 +414,14 @@ export default class JitsiLocalTrack extends JitsiTrack {
 
         if (!conference) {
             this._switchStreamEffect(effect);
+            if (this.isVideoTrack()) {
+                this.containers.forEach(cont => RTCUtils.attachMediaStream(cont, this.stream));
+            }
 
             return Promise.resolve();
         }
 
         this._setEffectInProgress = true;
-
-        if (browser.usesUnifiedPlan()) {
-            this._switchStreamEffect(effect);
-            if (this.isVideoTrack()) {
-                this.containers.forEach(cont => RTCUtils.attachMediaStream(cont, this.stream));
-            }
-
-            return conference.replaceTrack(this, this)
-                .then(() => {
-                    this._setEffectInProgress = false;
-                })
-                .catch(error => {
-                    this._setEffectInProgress = false;
-                    this._switchStreamEffect();
-                    logger.error('Failed to switch to the new stream!', error);
-                    throw error;
-                });
-        }
 
         // TODO: Create new JingleSessionPC method for replacing a stream in JitsiLocalTrack without offer answer.
         return conference.removeTrack(this)
@@ -510,7 +507,13 @@ export default class JitsiLocalTrack extends JitsiTrack {
                 || this.videoType === VideoType.DESKTOP
                 || !browser.doesVideoMuteByStreamRemove()) {
             logMuteInfo();
-            if (this.track) {
+
+            // If we have a stream effect that implements its own mute functionality, prioritize it before
+            // normal mute e.g. the stream effect that implements system audio sharing has a custom
+            // mute state in which if the user mutes, system audio still has to go through.
+            if (this._streamEffect && this._streamEffect.setMuted) {
+                this._streamEffect.setMuted(muted);
+            } else if (this.track) {
                 this.track.enabled = !muted;
             }
         } else if (muted) {
@@ -543,30 +546,16 @@ export default class JitsiLocalTrack extends JitsiTrack {
                 facingMode: this.getCameraFacingMode()
             };
 
-            if (browser.usesNewGumFlow()) {
-                promise
-                    = RTCUtils.newObtainAudioAndVideoPermissions(Object.assign(
-                        {},
-                        streamOptions,
-                        { constraints: { video: this._constraints } }));
-            } else {
-                if (this.resolution) {
-                    streamOptions.resolution = this.resolution;
-                }
-
-                promise
-                    = RTCUtils.obtainAudioAndVideoPermissions(streamOptions);
-            }
+            promise
+                = RTCUtils.obtainAudioAndVideoPermissions(Object.assign(
+                    {},
+                    streamOptions,
+                    { constraints: { video: this._constraints } }));
 
             promise = promise.then(streamsInfo => {
                 // The track kind for presenter track is video as well.
                 const mediaType = this.getType() === MediaType.PRESENTER ? MediaType.VIDEO : this.getType();
-                const streamInfo
-                    = browser.usesNewGumFlow()
-                        ? streamsInfo.find(
-                            info => info.track.kind === mediaType)
-                        : streamsInfo.find(
-                            info => info.mediaType === mediaType);
+                const streamInfo = streamsInfo.find(info => info.track.kind === mediaType);
 
                 if (streamInfo) {
                     this._setStream(streamInfo.stream);
@@ -596,8 +585,10 @@ export default class JitsiLocalTrack extends JitsiTrack {
         }
 
         return promise
-            .then(() => this._sendMuteStatus(muted))
-            .then(() => this.emit(TRACK_MUTE_CHANGED, this));
+            .then(() => {
+                this._sendMuteStatus(muted);
+                this.emit(TRACK_MUTE_CHANGED, this);
+            });
     }
 
     /**
@@ -650,19 +641,12 @@ export default class JitsiLocalTrack extends JitsiTrack {
      *
      * @param {boolean} mute - If track is muted.
      * @private
-     * @returns {Promise}
+     * @returns {void}
      */
     _sendMuteStatus(mute) {
-        if (!this.conference || !this.conference.room) {
-            return Promise.resolve();
+        if (this.conference) {
+            this.conference._setTrackMuteStatus(this.getType(), this, mute) && this.conference.room.sendPresence();
         }
-
-        return new Promise(resolve => {
-            this.conference.room[
-                this.isAudioTrack()
-                    ? 'setAudioMute'
-                    : 'setVideoMute'](mute, resolve);
-        });
     }
 
     /**
@@ -675,12 +659,16 @@ export default class JitsiLocalTrack extends JitsiTrack {
      * @returns {Promise}
      */
     dispose() {
-        this._switchStreamEffect();
-
         let promise = Promise.resolve();
 
+        // Remove the effect instead of stopping it so that the original stream is restored
+        // on both the local track and on the peerconnection.
+        if (this._streamEffect) {
+            promise = this.setEffect();
+        }
+
         if (this.conference) {
-            promise = this.conference.removeTrack(this);
+            promise = promise.then(() => this.conference.removeTrack(this));
         }
 
         if (this.stream) {
@@ -712,6 +700,11 @@ export default class JitsiLocalTrack extends JitsiTrack {
         }
         if (this.isVideoTrack() && !this.isActive()) {
             return true;
+        }
+
+        // If currently used stream effect has its own muted state, use that.
+        if (this._streamEffect && this._streamEffect.isMuted) {
+            return this._streamEffect.isMuted();
         }
 
         return !this.track || !this.track.enabled;
@@ -804,15 +797,8 @@ export default class JitsiLocalTrack extends JitsiTrack {
             // Chromium and https://bugzilla.mozilla.org/show_bug.cgi?id=1213517
             // for Firefox. Even if a browser implements getSettings() already,
             // it might still not return anything for 'facingMode'.
-            let trackSettings;
+            const trackSettings = this.track.getSettings?.();
 
-            try {
-                trackSettings = this.track.getSettings();
-            } catch (e) {
-                // XXX React-native-webrtc, for example, defines
-                // MediaStreamTrack#getSettings() but the implementation throws
-                // a "Not implemented" Error.
-            }
             if (trackSettings && 'facingMode' in trackSettings) {
                 return trackSettings.facingMode;
             }

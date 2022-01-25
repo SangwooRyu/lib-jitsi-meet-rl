@@ -1,14 +1,14 @@
-/* global __filename, Olm */
+/* global Olm */
 
+import { getLogger } from '@jitsi/logger';
 import base64js from 'base64-js';
-import { getLogger } from 'jitsi-meet-logger';
 import isEqual from 'lodash.isequal';
 import { v4 as uuidv4 } from 'uuid';
 
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
 import Deferred from '../util/Deferred';
 import Listenable from '../util/Listenable';
-import { JITSI_MEET_MUC_TYPE } from '../xmpp/xmpp';
+import { FEATURE_E2EE, JITSI_MEET_MUC_TYPE } from '../xmpp/xmpp';
 
 const logger = getLogger(__filename);
 
@@ -62,16 +62,47 @@ export class OlmAdapter extends Listenable {
         this._key = undefined;
         this._keyIndex = -1;
         this._reqs = new Map();
+        this._sessionInitialization = undefined;
 
         if (OlmAdapter.isSupported()) {
             this._bootstrapOlm();
 
             this._conf.on(JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED, this._onEndpointMessageReceived.bind(this));
-            this._conf.on(JitsiConferenceEvents.CONFERENCE_JOINED, this._onConferenceJoined.bind(this));
             this._conf.on(JitsiConferenceEvents.CONFERENCE_LEFT, this._onConferenceLeft.bind(this));
             this._conf.on(JitsiConferenceEvents.USER_LEFT, this._onParticipantLeft.bind(this));
+            this._conf.on(JitsiConferenceEvents.PARTICIPANT_PROPERTY_CHANGED,
+                this._onParticipantPropertyChanged.bind(this));
         } else {
             this._init.reject(new Error('Olm not supported'));
+        }
+    }
+
+    /**
+     * Starts new olm sessions with every other participant that has the participantId "smaller" the localParticipantId.
+     */
+    async initSessions() {
+        if (this._sessionInitialization) {
+            throw new Error('OlmAdapter initSessions called multiple times');
+        } else {
+            this._sessionInitialization = new Deferred();
+
+            await this._init;
+
+            const promises = [];
+            const localParticipantId = this._conf.myUserId();
+
+            for (const participant of this._conf.getParticipants()) {
+                if (participant.hasFeature(FEATURE_E2EE) && localParticipantId < participant.getId()) {
+                    promises.push(this._sendSessionInit(participant));
+                }
+            }
+
+            await Promise.allSettled(promises);
+
+            // TODO: retry failed ones.
+
+            this._sessionInitialization.resolve();
+            this._sessionInitialization = undefined;
         }
     }
 
@@ -82,19 +113,6 @@ export class OlmAdapter extends Listenable {
      */
     static isSupported() {
         return typeof window.Olm !== 'undefined';
-    }
-
-    /**
-     * Updates the current participant key and distributes it to all participants in the conference
-     * by sending a key-info message.
-     *
-     * @param {Uint8Array|boolean} key - The new key.
-     * @returns {number}
-     */
-    async updateCurrentKey(key) {
-        this._key = key;
-
-        return this._keyIndex;
     }
 
     /**
@@ -117,7 +135,6 @@ export class OlmAdapter extends Listenable {
             const olmData = this._getParticipantOlmData(participant);
 
             // TODO: skip those who don't support E2EE.
-
             if (!olmData.session) {
                 logger.warn(`Tried to send key to participant ${pId} but we have no session`);
 
@@ -156,6 +173,41 @@ export class OlmAdapter extends Listenable {
     }
 
     /**
+     * Updates the current participant key.
+     * @param {Uint8Array|boolean} key - The new key.
+     * @returns {number}
+    */
+    updateCurrentKey(key) {
+        this._key = key;
+
+        return this._keyIndex;
+    }
+
+    /**
+     * Frees the olmData session for the given participant.
+     *
+     */
+    clearParticipantSession(participant) {
+        const olmData = this._getParticipantOlmData(participant);
+
+        if (olmData.session) {
+            olmData.session.free();
+            olmData.session = undefined;
+        }
+    }
+
+
+    /**
+     * Frees the olmData sessions for all participants.
+     *
+     */
+    clearAllParticipantsSessions() {
+        for (const participant of this._conf.getParticipants()) {
+            this.clearParticipantSession(participant);
+        }
+    }
+
+    /**
      * Internal helper to bootstrap the olm library.
      *
      * @returns {Promise<void>}
@@ -176,12 +228,31 @@ export class OlmAdapter extends Listenable {
 
             logger.debug(`Olm ${Olm.get_library_version().join('.')} initialized`);
             this._init.resolve();
-            this.eventEmitter.emit(OlmAdapterEvents.OLM_ID_KEY_READY, this._idKey);
+            this._onIdKeyReady(this._idKey);
         } catch (e) {
             logger.error('Failed to initialize Olm', e);
             this._init.reject(e);
         }
 
+    }
+
+    /**
+     * Publishes our own Olmn id key in presence.
+     * @private
+     */
+    _onIdKeyReady(idKey) {
+        logger.debug(`Olm id key ready: ${idKey}`);
+
+        // Publish it in presence.
+        this._conf.setLocalParticipantProperty('e2ee.idKey', idKey);
+    }
+
+    /**
+     * Event posted when the E2EE signalling channel has been established with the given participant.
+     * @private
+     */
+    _onParticipantE2EEChannelReady(id) {
+        logger.debug(`E2EE channel with participant ${id} is ready`);
     }
 
     /**
@@ -213,32 +284,6 @@ export class OlmAdapter extends Listenable {
         participant[kOlmData] = participant[kOlmData] || {};
 
         return participant[kOlmData];
-    }
-
-    /**
-     * Handles the conference joined event. Upon joining a conference, the participant
-     * who just joined will start new olm sessions with every other participant.
-     *
-     * @private
-     */
-    async _onConferenceJoined() {
-        logger.debug('Conference joined');
-
-        await this._init;
-
-        const promises = [];
-
-        // Establish a 1-to-1 Olm session with every participant in the conference.
-        // We are forcing the last user to join the conference to start the exchange
-        // so we can send some pre-established secrets in the ACK.
-        for (const participant of this._conf.getParticipants()) {
-            promises.push(this._sendSessionInit(participant));
-        }
-
-        await Promise.allSettled(promises);
-
-        // TODO: retry failed ones.
-        // TODO: skip participants which don't support E2EE.
     }
 
     /**
@@ -311,8 +356,7 @@ export class OlmAdapter extends Listenable {
                 };
 
                 this._sendMessage(ack, pId);
-
-                this.eventEmitter.emit(OlmAdapterEvents.PARTICIPANT_E2EE_CHANNEL_READY, pId);
+                this._onParticipantE2EEChannelReady(pId);
             }
             break;
         }
@@ -337,7 +381,7 @@ export class OlmAdapter extends Listenable {
                 olmData.session = session;
                 olmData.pendingSessionUuid = undefined;
 
-                this.eventEmitter.emit(OlmAdapterEvents.PARTICIPANT_E2EE_CHANNEL_READY, pId);
+                this._onParticipantE2EEChannelReady(pId);
 
                 this._reqs.delete(msg.data.uuid);
                 d.resolve();
@@ -427,7 +471,6 @@ export class OlmAdapter extends Listenable {
             break;
         }
         }
-
     }
 
     /**
@@ -438,11 +481,49 @@ export class OlmAdapter extends Listenable {
     _onParticipantLeft(id, participant) {
         logger.debug(`Participant ${id} left`);
 
-        const olmData = this._getParticipantOlmData(participant);
+        this.clearParticipantSession(participant);
+    }
 
-        if (olmData.session) {
-            olmData.session.free();
-            olmData.session = undefined;
+    /**
+    * Handles an update in a participant's presence property.
+    *
+    * @param {JitsiParticipant} participant - The participant.
+    * @param {string} name - The name of the property that changed.
+    * @param {*} oldValue - The property's previous value.
+    * @param {*} newValue - The property's new value.
+    * @private
+    */
+    async _onParticipantPropertyChanged(participant, name, oldValue, newValue) {
+        switch (name) {
+        case 'e2ee.enabled':
+            if (newValue && this._conf.isE2EEEnabled()) {
+                const localParticipantId = this._conf.myUserId();
+                const participantId = participant.getId();
+                const participantFeatures = await participant.getFeatures();
+
+                if (participantFeatures.has(FEATURE_E2EE) && localParticipantId < participantId) {
+                    if (this._sessionInitialization) {
+                        await this._sessionInitialization;
+                    }
+                    await this._sendSessionInit(participant);
+
+                    const olmData = this._getParticipantOlmData(participant);
+                    const uuid = uuidv4();
+                    const data = {
+                        [JITSI_MEET_MUC_TYPE]: OLM_MESSAGE_TYPE,
+                        olm: {
+                            type: OLM_MESSAGE_TYPES.KEY_INFO,
+                            data: {
+                                ciphertext: this._encryptKeyInfo(olmData.session),
+                                uuid
+                            }
+                        }
+                    };
+
+                    this._sendMessage(data, participantId);
+                }
+            }
+            break;
         }
     }
 
@@ -547,8 +628,6 @@ export class OlmAdapter extends Listenable {
     }
 }
 
-OlmAdapter.events = OlmAdapterEvents;
-
 /**
  * Helper to ensure JSON parsing always returns an object.
  *
@@ -562,3 +641,5 @@ function safeJsonParse(data) {
         return {};
     }
 }
+
+OlmAdapter.events = OlmAdapterEvents;

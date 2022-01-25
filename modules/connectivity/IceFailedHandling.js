@@ -1,5 +1,4 @@
-/* global __filename */
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import * as JitsiConferenceErrors from '../../JitsiConferenceErrors';
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
@@ -33,20 +32,23 @@ export default class IceFailedHandling {
      * @returns {void}
      */
     _actOnIceFailed() {
-        const { enableIceRestart } = this._conference.options.config;
+        const { enableForcedReload, enableIceRestart } = this._conference.options.config;
         const explicitlyDisabled = typeof enableIceRestart !== 'undefined' && !enableIceRestart;
         const supportsRestartByTerminate = this._conference.room.supportsRestartByTerminate();
         const useTerminateForRestart = supportsRestartByTerminate && !enableIceRestart;
 
         logger.info('ICE failed,'
+            + ` enableForcedReload: ${enableForcedReload},`
             + ` enableIceRestart: ${enableIceRestart},`
             + ` supports restart by terminate: ${supportsRestartByTerminate}`);
 
-        if (explicitlyDisabled || (!enableIceRestart && !supportsRestartByTerminate)) {
+        if (explicitlyDisabled || (!enableIceRestart && !supportsRestartByTerminate) || enableForcedReload) {
             logger.info('ICE failed, but ICE restarts are disabled');
-            this._conference.eventEmitter.emit(
-                JitsiConferenceEvents.CONFERENCE_FAILED,
-                JitsiConferenceErrors.ICE_FAILED);
+            const reason = enableForcedReload
+                ? JitsiConferenceErrors.CONFERENCE_RESTARTED
+                : JitsiConferenceErrors.ICE_FAILED;
+
+            this._conference.eventEmitter.emit(JitsiConferenceEvents.CONFERENCE_FAILED, reason);
 
             return;
         }
