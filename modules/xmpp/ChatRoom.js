@@ -1994,52 +1994,6 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
-     * Ack for muting remote participant.
-     * @param jid of the participant
-     * @param ack
-     */
-    ackMuteParticipant(jid, ack) {
-        logger.info('ack mute', ack);
-        const iqToJid = $iq(
-            { to: jid,
-                type: 'set' })
-            .c('ackmute', {
-                xmlns: 'http://jitsi.org/jitmeet/audio',
-                jid
-            })
-            .t(ack?.toString() || 'true')
-            .up();
-
-        this.connection.sendIQ(
-            iqToJid,
-            result => logger.log('set mute', result),
-            error => logger.log('set mute error', error));
-    }
-
-    /**
-     * Ack for muting remote participant video.
-     * @param jid of the participant
-     * @param ack
-     */
-    ackMuteParticipantVideo(jid, ack) {
-        logger.info('ack mute video', ack);
-        const iqToJid = $iq(
-            { to: jid,
-                type: 'set' })
-            .c('ackmutevideo', {
-                xmlns: 'http://jitsi.org/jitmeet/video',
-                jid
-            })
-            .t(ack?.toString() || 'true')
-            .up();
-
-        this.connection.sendIQ(
-            iqToJid,
-            result => logger.log('set mute', result),
-            error => logger.log('set mute error', error));
-    }
-
-    /**
      * TODO: Document
      * @param iq
      */
@@ -2064,19 +2018,6 @@ export default class ChatRoom extends Listenable {
             // namespace?
             logger.warn('Ignoring a mute request which does not explicitly '
                 + 'specify a positive mute command.');
-        }
-
-        const ackMute = $(iq).find('ackmute');
-        if (ackMute.length) {
-            const nick = Strophe.getResourceFromJid(from);
-            this.eventEmitter.emit(
-                XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
-                nick,
-                ackMute.text() === 'true'
-            );
-        } else {
-            logger.warn('Ignoring a ack mute request which does not explicitly '
-                + 'specify a positive ackmute command.');
         }
     }
 
@@ -2106,19 +2047,6 @@ export default class ChatRoom extends Listenable {
             logger.warn('Ignoring a mute video request which does not explicitly '
                 + 'specify a positive mute command.');
         }
-
-        // const ackMute = $(iq).find('ackmutevideo');
-        // if (ackMute.length) {
-        //     const nick = Strophe.getResourceFromJid(from);
-        //     this.eventEmitter.emit(
-        //         XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
-        //         nick,
-        //         ackMute.text() === 'true'
-        //     );
-        // } else {
-        //     logger.warn('Ignoring a ack mute request which does not explicitly '
-        //         + 'specify a positive ackmute command.');
-        // }
     }
 
     /**

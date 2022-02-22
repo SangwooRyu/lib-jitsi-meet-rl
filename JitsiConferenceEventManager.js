@@ -17,6 +17,7 @@ import {
     createConnectionStageReachedEvent,
     createFocusLeftEvent,
     createJingleEvent,
+    createRemotelyMutedEvent
 } from './service/statistics/AnalyticsEvents';
 import XMPPEvents from './service/xmpp/XMPPEvents';
 
@@ -93,18 +94,54 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
                     offerIq, jingleSession.peerconnection);
         });
 
-    // delegate to jitsi-meet for asking unmute
-    this.chatRoomForwarder.forward(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
-        JitsiConferenceEvents.AUDIO_MUTED_BY_FOCUS);
 
-    this.chatRoomForwarder.forward(XMPPEvents.VIDEO_MUTED_BY_FOCUS,
-        JitsiConferenceEvents.VIDEO_MUTED_BY_FOCUS);
+    chatRoom.addListener(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
+        (actor, mute) => {
+            // TODO: Add a way to differentiate between commands which caused
+            // us to mute and those that did not change our state (i.e. we were
+            // already muted).
+            Statistics.sendAnalytics(createRemotelyMutedEvent(MediaType.AUDIO));
 
-    this.chatRoomForwarder.forward(XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
-        JitsiConferenceEvents.ACK_AUDIO_MUTED_BY_FOCUS);
+            conference.mutedByFocusActor = actor;
 
-    this.chatRoomForwarder.forward(XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
-        JitsiConferenceEvents.ACK_VIDEO_MUTED_BY_FOCUS);
+            // set isMutedByFocus when setAudioMute Promise ends
+            conference.rtc.setAudioMute(mute).then(
+                () => {
+                    conference.isMutedByFocus = true;
+                    conference.mutedByFocusActor = null;
+                })
+                .catch(
+                    error => {
+                        conference.mutedByFocusActor = null;
+                        logger.warn(
+                            'Error while audio muting due to focus request', error);
+                    });
+        }
+    );
+
+    chatRoom.addListener(XMPPEvents.VIDEO_MUTED_BY_FOCUS,
+        (actor, mute) => {
+            // TODO: Add a way to differentiate between commands which caused
+            // us to mute and those that did not change our state (i.e. we were
+            // already muted).
+            Statistics.sendAnalytics(createRemotelyMutedEvent(MediaType.VIDEO));
+
+            conference.mutedVideoByFocusActor = actor;
+
+            // set isVideoMutedByFocus when setVideoMute Promise ends
+            conference.rtc.setVideoMute(mute).then(
+                () => {
+                    conference.isVideoMutedByFocus = true;
+                    conference.mutedVideoByFocusActor = null;
+                })
+                .catch(
+                    error => {
+                        conference.mutedVideoByFocusActor = null;
+                        logger.warn(
+                            'Error while video muting due to focus request', error);
+                    });
+        }
+    );
 
     this.chatRoomForwarder.forward(XMPPEvents.SUBJECT_CHANGED,
         JitsiConferenceEvents.SUBJECT_CHANGED);
