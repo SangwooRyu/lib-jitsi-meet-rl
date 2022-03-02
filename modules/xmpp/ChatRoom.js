@@ -2065,19 +2065,6 @@ export default class ChatRoom extends Listenable {
             logger.warn('Ignoring a mute request which does not explicitly '
                 + 'specify a positive mute command.');
         }
-
-        const ackMute = $(iq).find('ackmute');
-        if (ackMute.length) {
-            const nick = Strophe.getResourceFromJid(from);
-            this.eventEmitter.emit(
-                XMPPEvents.ACK_AUDIO_MUTED_BY_FOCUS,
-                nick,
-                ackMute.text() === 'true'
-            );
-        } else {
-            logger.warn('Ignoring a ack mute request which does not explicitly '
-                + 'specify a positive ackmute command.');
-        }
     }
 
     /**
@@ -2106,19 +2093,6 @@ export default class ChatRoom extends Listenable {
             logger.warn('Ignoring a mute video request which does not explicitly '
                 + 'specify a positive mute command.');
         }
-
-        // const ackMute = $(iq).find('ackmutevideo');
-        // if (ackMute.length) {
-        //     const nick = Strophe.getResourceFromJid(from);
-        //     this.eventEmitter.emit(
-        //         XMPPEvents.ACK_VIDEO_MUTED_BY_FOCUS,
-        //         nick,
-        //         ackMute.text() === 'true'
-        //     );
-        // } else {
-        //     logger.warn('Ignoring a ack mute request which does not explicitly '
-        //         + 'specify a positive ackmute command.');
-        // }
     }
 
     /**
