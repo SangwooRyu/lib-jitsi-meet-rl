@@ -1994,52 +1994,6 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
-     * Ack for muting remote participant.
-     * @param jid of the participant
-     * @param ack
-     */
-    ackMuteParticipant(jid, ack) {
-        logger.info('ack mute', ack);
-        const iqToJid = $iq(
-            { to: jid,
-                type: 'set' })
-            .c('ackmute', {
-                xmlns: 'http://jitsi.org/jitmeet/audio',
-                jid
-            })
-            .t(ack?.toString() || 'true')
-            .up();
-
-        this.connection.sendIQ(
-            iqToJid,
-            result => logger.log('set mute', result),
-            error => logger.log('set mute error', error));
-    }
-
-    /**
-     * Ack for muting remote participant video.
-     * @param jid of the participant
-     * @param ack
-     */
-    ackMuteParticipantVideo(jid, ack) {
-        logger.info('ack mute video', ack);
-        const iqToJid = $iq(
-            { to: jid,
-                type: 'set' })
-            .c('ackmutevideo', {
-                xmlns: 'http://jitsi.org/jitmeet/video',
-                jid
-            })
-            .t(ack?.toString() || 'true')
-            .up();
-
-        this.connection.sendIQ(
-            iqToJid,
-            result => logger.log('set mute', result),
-            error => logger.log('set mute error', error));
-    }
-
-    /**
      * TODO: Document
      * @param iq
      */

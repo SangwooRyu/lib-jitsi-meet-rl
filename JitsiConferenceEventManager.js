@@ -17,6 +17,7 @@ import {
     createConnectionStageReachedEvent,
     createFocusLeftEvent,
     createJingleEvent,
+    createRemotelyMutedEvent,
 } from './service/statistics/AnalyticsEvents';
 import XMPPEvents from './service/xmpp/XMPPEvents';
 
@@ -95,7 +96,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
 
 
     chatRoom.addListener(XMPPEvents.AUDIO_MUTED_BY_FOCUS,
-        actor => {
+        (actor, mute) => {
             // TODO: Add a way to differentiate between commands which caused
             // us to mute and those that did not change our state (i.e. we were
             // already muted).
@@ -104,7 +105,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
             conference.mutedByFocusActor = actor;
 
             // set isMutedByFocus when setAudioMute Promise ends
-            conference.rtc.setAudioMute(true).then(
+            conference.rtc.setAudioMute(mute).then(
                 () => {
                     conference.isMutedByFocus = true;
                     conference.mutedByFocusActor = null;
@@ -119,7 +120,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
     );
 
     chatRoom.addListener(XMPPEvents.VIDEO_MUTED_BY_FOCUS,
-        actor => {
+        (actor, mute) => {
             // TODO: Add a way to differentiate between commands which caused
             // us to mute and those that did not change our state (i.e. we were
             // already muted).
@@ -128,7 +129,7 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
             conference.mutedVideoByFocusActor = actor;
 
             // set isVideoMutedByFocus when setVideoMute Promise ends
-            conference.rtc.setVideoMute(true).then(
+            conference.rtc.setVideoMute(mute).then(
                 () => {
                     conference.isVideoMutedByFocus = true;
                     conference.mutedVideoByFocusActor = null;
