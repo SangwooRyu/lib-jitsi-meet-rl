@@ -70,13 +70,6 @@
     "validate": "npm ls",
     "watch": "webpack --config webpack.config.js --watch --mode development"
   },
-  "browser": "dist/umd/lib-jitsi-meet.min.js",
-  "module": "dist/esm/JitsiMeetJS.js",
-  "files": [
-    "dist",
-    "types",
-    "connection_optimization/external_connect.js",
-    "modules/browser/capabilities.json"
-  ],
+  "main": "./index.js",
   "license": "Apache-2.0"
 }
