@@ -1,5 +1,5 @@
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
-import XMPPEvents from '../../service/xmpp/XMPPEvents';
+import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 
 import SpeakerStats from './SpeakerStats';
 
@@ -141,7 +141,6 @@ export default class SpeakerStatsCollector {
      *
      * @returns {Object} The keys are the user ids and the values are the
      * associated user's SpeakerStats model.
-     * @private
      */
     getStats() {
         return this.stats.users;

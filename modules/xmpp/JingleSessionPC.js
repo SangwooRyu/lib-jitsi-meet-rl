@@ -5,11 +5,12 @@ import { $iq, Strophe } from 'strophe.js';
 
 import * as CodecMimeType from '../../service/RTC/CodecMimeType';
 import MediaDirection from '../../service/RTC/MediaDirection';
+import { MediaType } from '../../service/RTC/MediaType';
 import {
     ICE_DURATION,
     ICE_STATE_CHANGED
 } from '../../service/statistics/AnalyticsEvents';
-import XMPPEvents from '../../service/xmpp/XMPPEvents';
+import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 import { SS_DEFAULT_FRAME_RATE } from '../RTC/ScreenObtainer';
 import FeatureFlags from '../flags/FeatureFlags';
 import SDP from '../sdp/SDP';
@@ -1383,7 +1384,7 @@ export default class JingleSessionPC extends JingleSession {
                     sid: this.sid
                 })
                 .c('content', {
-                    name: 'video',
+                    name: MediaType.VIDEO,
                     senders
                 });
 
@@ -1505,26 +1506,19 @@ export default class JingleSessionPC extends JingleSession {
     /**
      * Sets the resolution constraint on the local camera track.
      * @param {number} maxFrameHeight - The user preferred max frame height.
+     * @param {string} sourceName - The source name of the track.
      * @returns {Promise} promise that will be resolved when the operation is
      * successful and rejected otherwise.
      */
-    setSenderVideoConstraint(maxFrameHeight) {
+    setSenderVideoConstraint(maxFrameHeight, sourceName = null) {
         if (this._assertNotEnded()) {
-            logger.info(`${this} setSenderVideoConstraint: ${maxFrameHeight}`);
+            logger.info(`${this} setSenderVideoConstraint: ${maxFrameHeight}, sourceName: ${sourceName}`);
 
-            // RN doesn't support RTCRtpSenders yet, aggresive layer suspension on RN is implemented
-            // by changing the media direction in the SDP. This is applicable to jvb sessions only.
-            if (!this.isP2P && browser.isReactNative() && typeof maxFrameHeight !== 'undefined') {
-                const videoActive = maxFrameHeight > 0;
+            const jitsiLocalTrack = sourceName
+                ? this.rtc.getLocalVideoTracks().find(track => track.getSourceName() === sourceName)
+                : this.rtc.getLocalVideoTrack();
 
-                return this.setMediaTransferActive(true, videoActive);
-            }
-
-            const promise = typeof maxFrameHeight === 'undefined'
-                ? this.peerconnection.configureSenderVideoEncodings()
-                : this.peerconnection.setSenderVideoConstraints(maxFrameHeight);
-
-            return promise;
+            return this.peerconnection.setSenderVideoConstraints(maxFrameHeight, jitsiLocalTrack);
         }
 
         return Promise.resolve();
@@ -1720,7 +1714,7 @@ export default class JingleSessionPC extends JingleSession {
     }
 
     /**
-     * Handles the deletion of the remote tracks and SSRCs associated with a remote endpoint.
+     * Handles the deletion of SSRCs associated with a remote user from the remote description when the user leaves.
      *
      * @param {string} id Endpoint id of the participant that has left the call.
      * @returns {void}
@@ -1730,7 +1724,6 @@ export default class JingleSessionPC extends JingleSession {
             const removeSsrcInfo = this.peerconnection.getRemoteSourceInfoByParticipant(id);
 
             if (removeSsrcInfo.length) {
-                this.peerconnection.removeRemoteTracks(id);
                 const oldLocalSdp = new SDP(this.peerconnection.localDescription.sdp);
                 const newRemoteSdp = this._processRemoteRemoveSource(removeSsrcInfo);
 
@@ -1875,15 +1868,8 @@ export default class JingleSessionPC extends JingleSession {
                     const mid = remoteSdp.media.findIndex(mLine => mLine.includes(line));
 
                     if (mid > -1) {
+                        remoteSdp.media[mid] = remoteSdp.media[mid].replace(`${line}\r\n`, '');
                         if (this.isP2P) {
-                            // Do not remove ssrcs from m-line in p2p mode. If the ssrc is removed and added back to
-                            // the same m-line (on source-add), Chrome/Safari do not render the media even if it is
-                            // being received and decoded from the remote peer. The webrtc spec is not clear about
-                            // m-line re-use and the browser vendors have implemented this differently. Currently work
-                            // around this by changing the media direction, that should be enough for the browser to
-                            // fire the "removetrack" event on the associated MediaStream. Also, the current direction
-                            // of the transceiver for p2p will depend on whether a local sources is added or not. It
-                            // will be 'sendrecv' if the local source is present, 'sendonly' otherwise.
                             const mediaType = SDPUtil.parseMLine(remoteSdp.media[mid].split('\r\n')[0])?.media;
                             const desiredDirection = this.peerconnection.getDesiredMediaDirection(mediaType, false);
 
@@ -1893,7 +1879,6 @@ export default class JingleSessionPC extends JingleSession {
                             });
                         } else {
                             // Jvb connections will have direction set to 'sendonly' for the remote sources.
-                            remoteSdp.media[mid] = remoteSdp.media[mid].replace(`${line}\r\n`, '');
                             remoteSdp.media[mid] = remoteSdp.media[mid]
                                 .replace(`a=${MediaDirection.SENDONLY}`, `a=${MediaDirection.INACTIVE}`);
                         }
@@ -2027,6 +2012,51 @@ export default class JingleSessionPC extends JingleSession {
     }
 
     /**
+     * Adds a new track to the peerconnection. This method needs to be called only when a secondary JitsiLocalTrack is
+     * being added to the peerconnection for the first time.
+     *
+     * @param {JitsiLocalTrack} localTrack track to be added to the peer connection.
+     * @returns {Promise<void>} that resolves when the track is successfully added to the peerconnection, rejected
+     * otherwise.
+     */
+    addTrack(localTrack) {
+        if (!FeatureFlags.isMultiStreamSupportEnabled()
+            || !this.usesUnifiedPlan
+            || localTrack.type !== MediaType.VIDEO) {
+            return Promise.reject(new Error('Multiple tracks of a given media type are not supported'));
+        }
+
+        const workFunction = finishedCallback => {
+            const remoteSdp = new SDP(this.peerconnection.peerconnection.remoteDescription.sdp);
+
+            // Add a new transceiver by adding a new mline in the remote description.
+            remoteSdp.addMlineForNewLocalSource(MediaType.VIDEO);
+            this._renegotiate(remoteSdp.raw)
+                .then(() => finishedCallback(), error => finishedCallback(error));
+        };
+
+        return new Promise((resolve, reject) => {
+            logger.debug(`${this} Queued renegotiation after addTrack`);
+
+            this.modificationQueue.push(
+                workFunction,
+                error => {
+                    if (error) {
+                        logger.error(`${this} renegotiation after addTrack error`, error);
+                        reject(error);
+                    } else {
+                        logger.debug(`${this} renegotiation after addTrack executed - OK`);
+
+                        // Replace the track on the newly generated transceiver.
+                        return this.replaceTrack(null, localTrack)
+                            .then(() => resolve())
+                            .catch(() => reject());
+                    }
+                });
+        });
+    }
+
+    /**
      * Replaces <tt>oldTrack</tt> with <tt>newTrack</tt> and performs a single
      * offer/answer cycle after both operations are done. Either
      * <tt>oldTrack</tt> or <tt>newTrack</tt> can be null; replacing a valid
@@ -2101,7 +2131,7 @@ export default class JingleSessionPC extends JingleSession {
                             logger.debug(`${this} replaceTrack worker: configuring video stream`);
 
                             // Configure the video encodings after the track is replaced.
-                            return this.peerconnection.configureSenderVideoEncodings();
+                            return this.peerconnection.configureSenderVideoEncodings(newTrack);
                         }
                     });
                 })
@@ -2249,7 +2279,7 @@ export default class JingleSessionPC extends JingleSession {
                 // Configure the video encodings after the track is unmuted. If the user joins the call muted and
                 // unmutes it the first time, all the parameters need to be configured.
                 if (track.isVideoTrack()) {
-                    return this.peerconnection.configureSenderVideoEncodings();
+                    return this.peerconnection.configureSenderVideoEncodings(track);
                 }
             });
     }

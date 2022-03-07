@@ -6,7 +6,7 @@ import 'strophejs-plugin-disco';
 
 import * as JitsiConnectionErrors from '../../JitsiConnectionErrors';
 import * as JitsiConnectionEvents from '../../JitsiConnectionEvents';
-import XMPPEvents from '../../service/xmpp/XMPPEvents';
+import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 import browser from '../browser';
 import { E2EEncryption } from '../e2ee/E2EEncryption';
 import Statistics from '../statistics/statistics';
@@ -463,7 +463,8 @@ export default class XMPP extends Listenable {
 
         if (this.avModerationComponentAddress
             || this.speakerStatsComponentAddress
-            || this.conferenceDurationComponentAddress) {
+            || this.conferenceDurationComponentAddress
+            || this.breakoutRoomsComponentAddress) {
             this.connection.addHandler(this._onPrivateMessage.bind(this), null, 'message', null, null);
         }
     }
