@@ -1,6 +1,4 @@
-/* global __filename */
-
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
 import RTCEvents from '../../service/RTC/RTCEvents';
@@ -103,7 +101,7 @@ export class KeyHandler extends Listenable {
      * @private
      */
     _onLocalTrackAdded(track) {
-        for (const session of this.conference._getMediaSessions()) {
+        for (const session of this.conference.getMediaSessions()) {
             this._setupSenderE2EEForTrack(session, track);
         }
     }
@@ -169,7 +167,7 @@ export class KeyHandler extends Listenable {
      */
     _trackMuteChanged(track) {
         if (browser.doesVideoMuteByStreamRemove() && track.isLocal() && track.isVideoTrack() && !track.isMuted()) {
-            for (const session of this.conference._getMediaSessions()) {
+            for (const session of this.conference.getMediaSessions()) {
                 this._setupSenderE2EEForTrack(session, track);
             }
         }

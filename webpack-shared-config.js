@@ -9,6 +9,9 @@ module.exports = (minimize, analyzeBundle) => {
     return {
         // The inline-source-map is used to allow debugging the unit tests with Karma
         devtool: minimize ? 'source-map' : 'inline-source-map',
+        resolve: {
+            extensions: [ '', '.js', '.ts' ]
+        },
         mode: minimize ? 'production' : 'development',
         module: {
             rules: [ {
@@ -43,22 +46,17 @@ module.exports = (minimize, analyzeBundle) => {
                                 // done unnecessarily. For browsers not specified
                                 // here, the ES2015+ profile will be used.
                                 targets: {
-                                    chrome: 58,
-                                    electron: 2,
-                                    firefox: 54,
-                                    safari: 11
+                                    chrome: 80,
+                                    electron: 10,
+                                    firefox: 68,
+                                    safari: 14
                                 }
                             }
-                        ]
-                    ],
-                    plugins: [
-                        '@babel/plugin-proposal-class-properties',
-                        '@babel/plugin-proposal-optional-chaining',
-                        '@babel/plugin-proposal-export-namespace-from',
-                        '@babel/plugin-proposal-nullish-coalescing-operator'
+                        ],
+                        '@babel/preset-typescript'
                     ]
                 },
-                test: /\.js$/
+                test: /\.(js|ts)$/
             } ]
         },
         node: {

@@ -1,12 +1,11 @@
-/* global __filename */
-
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
 import BridgeVideoType from '../../service/RTC/BridgeVideoType';
-import * as MediaType from '../../service/RTC/MediaType';
+import { MediaType } from '../../service/RTC/MediaType';
 import RTCEvents from '../../service/RTC/RTCEvents';
 import browser from '../browser';
+import FeatureFlags from '../flags/FeatureFlags';
 import Statistics from '../statistics/statistics';
 import GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import Listenable from '../util/Listenable';
@@ -128,6 +127,15 @@ export default class RTC extends Listenable {
         this._lastNEndpoints = null;
 
         /**
+         * Defines the forwarded sources list. It can be null or an array once initialised with a channel forwarded
+         * sources event.
+         *
+         * @type {Array<string>|null}
+         * @private
+         */
+        this._forwardedSources = null;
+
+        /**
          * The number representing the maximum video height the local client
          * should receive from the bridge.
          *
@@ -153,11 +161,19 @@ export default class RTC extends Listenable {
         // The last N change listener.
         this._lastNChangeListener = this._onLastNChanged.bind(this);
 
+        // The forwarded sources change listener.
+        this._forwardedSourcesChangeListener = this._onForwardedSourcesChanged.bind(this);
+
         this._onDeviceListChanged = this._onDeviceListChanged.bind(this);
         this._updateAudioOutputForAudioTracks
             = this._updateAudioOutputForAudioTracks.bind(this);
 
-        // The default video type assumed by the bridge.
+        /**
+         * The default video type assumed by the bridge.
+         * @deprecated this will go away with multiple streams support
+         * @type {BridgeVideoType}
+         * @private
+         */
         this._videoType = BridgeVideoType.NONE;
 
         // Switch audio output device on all remote audio tracks. Local audio
@@ -264,17 +280,12 @@ export default class RTC extends Listenable {
                     logError(error, 'LastNChangedEvent', this._lastN);
                 }
             }
-            if (this._recvVideoEndpoints) {
+            if (!FeatureFlags.isSourceNameSignalingEnabled()) {
                 try {
-                    this._channel.sendRecvVideoEndpointsMessage(this._recvVideoEndpoints);
+                    this._channel.sendVideoTypeMessage(this._videoType);
                 } catch (error) {
-                    logError(error, 'RecvVideoEndpointsEvent', this._recvVideoEndpoints);
+                    logError(error, 'VideoTypeMessage', this._videoType);
                 }
-            }
-            try {
-                this._channel.sendVideoTypeMessage(this._videoType);
-            } catch (error) {
-                logError(error, 'VideoTypeMessage', this._videoType);
             }
 
             this.removeListener(RTCEvents.DATA_CHANNEL_OPEN, this._channelOpenListener);
@@ -284,6 +295,11 @@ export default class RTC extends Listenable {
 
         // Add Last N change listener.
         this.addListener(RTCEvents.LASTN_ENDPOINT_CHANGED, this._lastNChangeListener);
+
+        if (FeatureFlags.isSourceNameSignalingEnabled()) {
+            // Add forwarded sources change listener.
+            this.addListener(RTCEvents.FORWARDED_SOURCES_CHANGED, this._forwardedSourcesChangeListener);
+        }
     }
 
     /**
@@ -320,6 +336,31 @@ export default class RTC extends Listenable {
             JitsiConferenceEvents.LAST_N_ENDPOINTS_CHANGED,
             leavingLastNEndpoints,
             enteringLastNEndpoints);
+    }
+
+    /**
+     * Receives events when forwarded sources had changed.
+     *
+     * @param {array} forwardedSources The new forwarded sources.
+     * @private
+     */
+    _onForwardedSourcesChanged(forwardedSources = []) {
+        const oldForwardedSources = this._forwardedSources || [];
+        let leavingForwardedSources = [];
+        let enteringForwardedSources = [];
+
+        this._forwardedSources = forwardedSources;
+
+        leavingForwardedSources = oldForwardedSources.filter(sourceName => !this.isInForwardedSources(sourceName));
+
+        enteringForwardedSources = forwardedSources.filter(
+            sourceName => oldForwardedSources.indexOf(sourceName) === -1);
+
+        this.conference.eventEmitter.emit(
+            JitsiConferenceEvents.FORWARDED_SOURCES_CHANGED,
+            leavingForwardedSources,
+            enteringForwardedSources,
+            Date.now());
     }
 
     /**
@@ -396,6 +437,17 @@ export default class RTC extends Listenable {
             if (this._channel && this._channel.isOpen()) {
                 this._channel.sendVideoTypeMessage(videoType);
             }
+        }
+    }
+
+    /**
+     * Sends the track's  video type to the JVB.
+     * @param {SourceName} sourceName - the track's source name.
+     * @param {BridgeVideoType} videoType - the track's video type.
+     */
+    sendSourceVideoType(sourceName, videoType) {
+        if (this._channel && this._channel.isOpen()) {
+            this._channel.sendSourceVideoTypeMessage(sourceName, videoType);
         }
     }
 
@@ -560,6 +612,14 @@ export default class RTC extends Listenable {
     }
 
     /**
+     * Get forwarded sources list.
+     * @returns {Array<string>|null}
+     */
+    getForwardedSources() {
+        return this._forwardedSources;
+    }
+
+    /**
      * Get local video track.
      * @returns {JitsiLocalTrack|undefined}
      */
@@ -568,6 +628,14 @@ export default class RTC extends Listenable {
 
 
         return localVideo.length ? localVideo[0] : undefined;
+    }
+
+    /**
+     * Returns all the local video tracks.
+     * @returns {Array<JitsiLocalTrack>}
+     */
+    getLocalVideoTracks() {
+        return this.getLocalTracks(MediaType.VIDEO);
     }
 
     /**
@@ -926,6 +994,18 @@ export default class RTC extends Listenable {
     isInLastN(id) {
         return !this._lastNEndpoints // lastNEndpoints not initialised yet.
             || this._lastNEndpoints.indexOf(id) > -1;
+    }
+
+    /**
+     * Indicates if the source name is currently included in the forwarded sources.
+     *
+     * @param {string} sourceName The source name that we check for forwarded sources.
+     * @returns {boolean} true if the source name is in the forwarded sources or if we don't have bridge channel
+     * support, otherwise we return false.
+     */
+    isInForwardedSources(sourceName) {
+        return !this._forwardedSources // forwardedSources not initialised yet.
+            || this._forwardedSources.indexOf(sourceName) > -1;
     }
 
     /**

@@ -1,9 +1,9 @@
 
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 
 import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
 import CodecMimeType from '../../service/RTC/CodecMimeType';
-import * as MediaType from '../../service/RTC/MediaType';
+import { MediaType } from '../../service/RTC/MediaType';
 import browser from '../browser';
 
 const logger = getLogger(__filename);
@@ -59,7 +59,7 @@ export class CodecSelection {
             () => this._selectPreferredCodec());
         this.conference.on(
             JitsiConferenceEvents._MEDIA_SESSION_STARTED,
-            session => this._onMediaSessionStared(session));
+            session => this._onMediaSessionStarted(session));
     }
 
     /**
@@ -105,8 +105,8 @@ export class CodecSelection {
      * @returns {void}
      * @private
      */
-    _onMediaSessionStared(mediaSession) {
-        const preferredCodec = mediaSession?.isP2P ? this.p2pPreferredCodec : this.jvbPreferredCodec;
+    _onMediaSessionStarted(mediaSession) {
+        const preferredCodec = mediaSession.isP2P ? this.p2pPreferredCodec : this.jvbPreferredCodec;
         const disabledCodec = this.disabledCodec && this._isCodecSupported(this.disabledCodec)
             ? this.disabledCodec
             : null;
@@ -131,7 +131,7 @@ export class CodecSelection {
             const remoteParticipants = this.conference.getParticipants().map(participant => participant.getId());
 
             for (const remote of remoteParticipants) {
-                const peerMediaInfo = session.signalingLayer.getPeerMediaInfo(remote, MediaType.VIDEO);
+                const peerMediaInfo = session._signalingLayer.getPeerMediaInfo(remote, MediaType.VIDEO);
                 const peerCodec = peerMediaInfo?.codecType;
 
                 if (peerCodec

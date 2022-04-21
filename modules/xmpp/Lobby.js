@@ -1,7 +1,7 @@
-import { getLogger } from 'jitsi-meet-logger';
+import { getLogger } from '@jitsi/logger';
 import { $msg, Strophe } from 'strophe.js';
 
-import XMPPEvents from '../../service/xmpp/XMPPEvents';
+import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 
 const logger = getLogger(__filename);
 
@@ -83,8 +83,77 @@ export default class Lobby {
     }
 
     /**
+     * Broadcast a message to all participants in the lobby room
+     * @param {Object} message The message to send
+     *
+     * @returns {void}
+     */
+    sendMessage(message) {
+        if (this.lobbyRoom) {
+            this.lobbyRoom.sendMessage(JSON.stringify(message), 'json-message');
+        }
+    }
+
+    /**
+     * Sends a private message to a participant in a lobby room.
+     * @param {string} id The message to send
+     * @param {Object} message The message to send
+     *
+     * @returns {void}
+     */
+    sendPrivateMessage(id, message) {
+        if (this.lobbyRoom) {
+            this.lobbyRoom.sendPrivateMessage(id, JSON.stringify(message), 'json-message');
+        }
+    }
+
+    /**
+     * Gets the local id for a participant in a lobby room.
+     * This is used for lobby room private chat messages.
+     *
+     * @returns {string}
+     */
+    getLocalId() {
+        if (this.lobbyRoom) {
+            return Strophe.getResourceFromJid(this.lobbyRoom.myroomjid);
+        }
+    }
+
+    /**
+     * Adds a message listener to the lobby room.
+     * @param {Function} listener The listener function,
+     * called when a new message is received in the lobby room.
+     *
+     * @returns {Function} Handler returned to be able to remove it later.
+     */
+    addMessageListener(listener) {
+        if (this.lobbyRoom) {
+            const handler = (participantId, message) => {
+                listener(message, Strophe.getResourceFromJid(participantId));
+            };
+
+            this.lobbyRoom.on(XMPPEvents.JSON_MESSAGE_RECEIVED, handler);
+
+            return handler;
+        }
+    }
+
+    /**
+     * Remove a message handler from the lobby room.
+     * @param {Function} handler The handler function to remove.
+     *
+     * @returns {void}
+     */
+    removeMessageHandler(handler) {
+        if (this.lobbyRoom) {
+            this.lobbyRoom.off(XMPPEvents.JSON_MESSAGE_RECEIVED, handler);
+        }
+    }
+
+    /**
      * Leaves the lobby room.
-     * @private
+     *
+     * @returns {Promise}
      */
     leave() {
         if (this.lobbyRoom) {
@@ -97,7 +166,7 @@ export default class Lobby {
         }
 
         return Promise.reject(
-            new Error('The lobby has already been left'));
+                new Error('The lobby has already been left'));
     }
 
     /**
@@ -173,6 +242,13 @@ export default class Lobby {
                     // we need to ignore joins on lobby for participants that are already in the main room
                     if (Object.values(this.mainRoom.members).find(m => m.jid === jid)) {
                         return;
+                    }
+
+                    // Check if the user is a member if any breakout room.
+                    for (const room of Object.values(this.mainRoom.getBreakoutRooms()._rooms)) {
+                        if (Object.values(room.participants).find(p => p.jid === jid)) {
+                            return;
+                        }
                     }
 
                     // we emit the new event on the main room so we can propagate
@@ -306,8 +382,8 @@ export default class Lobby {
         // room's lobby.
         let mainRoomJid = this.mainRoom.roomjid;
 
-        if (this.mainRoom.getBreakoutRoomsHelper().isBreakoutRoom()) {
-            mainRoomJid = this.mainRoom.getBreakoutRoomsHelper().getMainRoomJid();
+        if (this.mainRoom.getBreakoutRooms().isBreakoutRoom()) {
+            mainRoomJid = this.mainRoom.getBreakoutRooms().getMainRoomJid();
         }
 
         const memberRoomJid = Object.keys(this.lobbyRoom.members)
