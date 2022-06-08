@@ -32,7 +32,7 @@ describe( "/service/xmpp/XMPPEvents members", () => {
         expect( XMPPEvents.DISPLAY_NAME_CHANGED ).toBe( 'xmpp.display_name_changed' );
         expect( XMPPEvents.EMUC_ROOM_ADDED ).toBe( 'xmpp.emuc_room_added' );
         expect( XMPPEvents.EMUC_ROOM_REMOVED ).toBe( 'xmpp.emuc_room_removed' );
-        expect( XMPPEvents.ETHERPAD ).toBe( 'xmpp.etherpad' );
+        expect( XMPPEvents.WHITEBOARD ).toBe( 'xmpp.whiteboard' );
         expect( XMPPEvents.FOCUS_DISCONNECTED ).toBe( 'xmpp.focus_disconnected' );
         expect( XMPPEvents.FOCUS_LEFT ).toBe( 'xmpp.focus_left' );
         expect( XMPPEvents.GRACEFUL_SHUTDOWN ).toBe( 'xmpp.graceful_shutdown' );

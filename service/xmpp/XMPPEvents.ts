@@ -77,7 +77,7 @@ export enum XMPPEvents {
      * Chat room instance have been removed from Strophe.emuc plugin.
      */
     EMUC_ROOM_REMOVED = 'xmpp.emuc_room_removed',
-    ETHERPAD = 'xmpp.etherpad',
+    WHITEBOARD = 'xmpp.whiteboard',
     FOCUS_DISCONNECTED = 'xmpp.focus_disconnected',
     FOCUS_LEFT = 'xmpp.focus_left',
     GRACEFUL_SHUTDOWN = 'xmpp.graceful_shutdown',
