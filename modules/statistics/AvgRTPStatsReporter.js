@@ -634,8 +634,10 @@ export default class AvgRTPStatsReporter {
         this._avgVideoBitrateUp.addNext(bitrate.video.upload);
         this._avgVideoBitrateDown.addNext(bitrate.video.download);
 
-        if (browser.supportsBandwidthStatistics()) {
+        if (browser.supportsBandwidthStatistics() && bandwidth.upload) {
             this._avgBandwidthUp.addNext(bandwidth.upload);
+        }
+        if (browser.supportsBandwidthStatistics() && bandwidth.download) {
             this._avgBandwidthDown.addNext(bandwidth.download);
         }
 

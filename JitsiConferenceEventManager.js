@@ -751,13 +751,11 @@ JitsiConferenceEventManager.prototype.setupXMPPListeners = function() {
         });
 
     this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_CHANGED,
-        (value, kind, actorJid) => {
-            const actorParticipant = conference.getParticipants().find(p => p.getJid() === actorJid);
-
+        (value, kind, actor) => {
             conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_CHANGED, {
                 enabled: value,
                 kind,
-                actor: actorParticipant
+                actor
             });
         });
     this._addConferenceXMPPListener(XMPPEvents.AV_MODERATION_PARTICIPANT_APPROVED,

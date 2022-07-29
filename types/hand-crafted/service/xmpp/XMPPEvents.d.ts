@@ -19,7 +19,7 @@
   DISPLAY_NAME_CHANGED = 'xmpp.display_name_changed',
   EMUC_ROOM_ADDED = 'xmpp.emuc_room_added',
   EMUC_ROOM_REMOVED = 'xmpp.emuc_room_removed',
-  ETHERPAD = 'xmpp.etherpad',
+  WHITEBOARD = 'xmpp.whiteboard',
   FOCUS_DISCONNECTED = 'xmpp.focus_disconnected',
   FOCUS_LEFT = 'xmpp.focus_left',
   GRACEFUL_SHUTDOWN = 'xmpp.graceful_shutdown',

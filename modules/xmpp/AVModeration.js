@@ -1,7 +1,6 @@
 import { getLogger } from '@jitsi/logger';
 import { $msg } from 'strophe.js';
 
-import { MediaType } from '../../service/RTC/MediaType';
 import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 
 const logger = getLogger(__filename);
@@ -134,10 +133,13 @@ export default class AVModeration {
 
     _sendMessage(message) {
         const msg = $msg({ to: this.getComponentAddress() });
+        const actor = this._mainRoom.myroomjid;
+
         const jsonMsg = JSON.stringify({
             ...message,
             type: 'av_moderation',
-            room: this._mainRoom.roomjid
+            room: this._mainRoom.roomjid,
+            actor
         });
         msg.c('json-message', { xmlns: 'http://jitsi.org/jitmeet' }, jsonMsg);
         this._xmpp.connection.send(msg);
@@ -151,6 +153,7 @@ export default class AVModeration {
     _onMessage(obj) {
         const { removed, kind, enabled, approved, actor, whitelists: newWhitelists } = obj;
 
+        // console.log('_onMessage:', obj);
         if (newWhitelists) {
             const oldList = this._whitelist[kind] || [];
             const newList = newWhitelists[kind] || [];
