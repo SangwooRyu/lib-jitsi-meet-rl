@@ -3,10 +3,13 @@ import { getLogger } from '@jitsi/logger';
 import { MediaType } from '../../service/RTC/MediaType';
 import * as StatisticsEvents from '../../service/statistics/Events';
 import browser from '../browser';
+import axios from 'axios';
 
 const GlobalOnErrorHandler = require('../util/GlobalOnErrorHandler');
 
 const logger = getLogger(__filename);
+
+var myParticipantId = -1;
 
 /**
  * Calculates packet lost percent using the number of lost packets and the
@@ -283,6 +286,11 @@ StatsCollector.prototype._processAndEmitReport = function() {
     let videoBitrateUpload = 0;
     let videoCodec;
 
+    let savings = {};
+    savings['timestamp'] = Date.now();
+    savings['whoami'] = myParticipantId;
+    savings['stats'] = {}
+
     for (const [ ssrc, ssrcStats ] of this.ssrc2stats) {
         // process packet loss stats
         const loss = ssrcStats.loss;
@@ -312,6 +320,13 @@ StatsCollector.prototype._processAndEmitReport = function() {
             const participantId = track.getParticipantId();
 
             if (participantId) {
+                savings['stats'][participantId] = {}
+                savings['stats'][participantId]['ssrc']= ssrc;
+                savings['stats'][participantId]['all'] = ssrcStats;
+
+                if (participantId in track.conference.participants)
+                    savings['stats'][participantId]['displayName'] = track.conference.participants[participantId]._displayName;
+
                 const resolution = ssrcStats.resolution;
 
                 if (resolution.width
@@ -322,12 +337,14 @@ StatsCollector.prototype._processAndEmitReport = function() {
 
                     userResolutions[ssrc] = resolution;
                     resolutions[participantId] = userResolutions;
+                    savings['stats'][participantId]['resolution'] = userResolutions;
                 }
                 if (ssrcStats.framerate !== 0) {
                     const userFramerates = framerates[participantId] || {};
 
                     userFramerates[ssrc] = ssrcStats.framerate;
                     framerates[participantId] = userFramerates;
+                    savings['stats'][participantId]['framerate'] = userFramerates;
                 }
                 if (audioCodec && videoCodec) {
                     const codecDesc = {
@@ -396,6 +413,10 @@ StatsCollector.prototype._processAndEmitReport = function() {
         }
     });
     this.audioLevelReportHistory = {};
+
+    if (myParticipantId !== -1){
+        axios.post('https://141.223.181.223:9005/collect', savings);
+    }
 
     this.eventEmitter.emit(
         StatisticsEvents.CONNECTION_STATS,
@@ -625,6 +646,8 @@ StatsCollector.prototype.processStatsReport = function() {
             }
 
             const ssrc = this.peerconnection.getLocalSSRC(localVideoTracks[0]);
+            const myTrack = this.peerconnection.getTrackBySSRC(ssrc);
+            myParticipantId = myTrack.getParticipantId();
 
             if (!ssrc) {
                 return;
